@@ -47,3 +47,17 @@ def test_user_preferences_has_correct_pk():
     cols = {c.name: c for c in UserPreferences.__table__.columns}
     assert cols["user_id"].primary_key is True
     assert len(cols["user_id"].foreign_keys) == 1
+
+
+def test_all_expected_tables_exist():
+    from gad.models import Base
+
+    expected = {
+        "users", "user_preferences", "plans", "plan_applications",
+        "matches", "match_participants", "messages", "reviews",
+        "availability", "trusted_contacts", "safety_sessions",
+        "safety_events", "blocks", "notifications",
+    }
+    actual = set(Base.metadata.tables.keys())
+    missing = expected - actual
+    assert not missing, f"Faltan tablas: {missing}"

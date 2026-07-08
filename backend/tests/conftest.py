@@ -1,4 +1,11 @@
 # backend/tests/conftest.py
+import os
+
+# Deshabilita el rate limiting global ANTES de importar gad.* para que el limiter
+# singleton no intente conectar al Redis del .env (inaccesible en tests).
+# El test dedicado test_rate_limit.py usa su propio limiter con testcontainers.
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
+
 from collections.abc import AsyncGenerator
 
 import pytest
