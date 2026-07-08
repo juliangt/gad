@@ -1,0 +1,107 @@
+# backend/src/gad/plans/service.py
+from datetime import UTC, datetime, timedelta
+
+from geoalchemy2.elements import WKTElement
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from gad.exceptions import NotFoundError
+from gad.models.enums import ActivityType, PlanMode, PlanStatus
+from gad.models.geo import snap_to_grid
+from gad.models.plan import Plan
+from gad.models.social import Block
+from gad.models.user import User
+from gad.plans.schemas import PlanIn
+
+
+def _to_geography(lat: float, lng: float) -> WKTElement:
+    return WKTElement(f"POINT({lng} {lat})", srid=4326)
+
+
+async def create_plan(session: AsyncSession, host: User, data: PlanIn) -> Plan:
+    now = datetime.now(UTC)
+    grid_lat, grid_lng = snap_to_grid(data.location.lat, data.location.lng)
+
+    if data.mode == PlanMode.now:
+        expires_at = now + timedelta(minutes=data.window_minutes)
+    else:
+        assert data.scheduled_at is not None
+        expires_at = data.scheduled_at + timedelta(minutes=data.window_minutes)
+
+    plan = Plan(
+        host_id=host.id,
+        activity_type=data.activity_type,
+        mode=data.mode,
+        scheduled_at=data.scheduled_at,
+        window_minutes=data.window_minutes,
+        max_participants=data.max_participants,
+        title=data.title,
+        description=data.description,
+        location_label=data.location.label,
+        location_grid=_to_geography(grid_lat, grid_lng),
+        exact_location=None,
+        search_radius_m=data.search_radius_m,
+        status=PlanStatus.open,
+        expires_at=expires_at,
+    )
+    session.add(plan)
+    await session.commit()
+    await session.refresh(plan)
+    return plan
+
+
+async def get_plan(session: AsyncSession, plan_id) -> Plan:
+    result = await session.execute(select(Plan).where(Plan.id == plan_id))
+    plan = result.scalar_one_or_none()
+    if plan is None:
+        raise NotFoundError("Plan no encontrado")
+    return plan
+
+
+async def cancel_plan(session: AsyncSession, plan: Plan) -> Plan:
+    plan.status = PlanStatus.cancelled
+    await session.commit()
+    await session.refresh(plan)
+    return plan
+
+
+async def list_nearby_plans(
+    session: AsyncSession,
+    *,
+    viewer: User,
+    lat: float,
+    lng: float,
+    radius_m: int,
+    activity: ActivityType | None = None,
+    mode: PlanMode | None = None,
+    limit: int = 50,
+) -> list[Plan]:
+    """Devuelve planes abiertos, no expirados, dentro de radius_m, que no son
+    del viewer y cuyos hosts no están bloqueados por/para el viewer."""
+    viewer_point = _to_geography(lat, lng)
+
+    blocked_subq = select(Block.blocked_id).where(Block.blocker_id == viewer.id)
+    blocked_by_subq = select(Block.blocker_id).where(Block.blocked_id == viewer.id)
+    exclude_ids = blocked_subq.union(blocked_by_subq)
+
+    stmt = (
+        select(Plan, Plan.location_grid.ST_Distance(viewer_point).label("distance"))
+        .join(User, User.id == Plan.host_id)
+        .where(
+            Plan.status == PlanStatus.open,
+            Plan.expires_at > func.now(),
+            Plan.host_id != viewer.id,
+            Plan.location_grid.ST_DWithin(viewer_point, radius_m),
+            ~User.id.in_(exclude_ids),
+        )
+        .order_by("distance")
+        .limit(limit)
+    )
+    if activity is not None:
+        stmt = stmt.where(Plan.activity_type == activity)
+    if mode is not None:
+        stmt = stmt.where(Plan.mode == mode)
+
+    result = await session.execute(stmt)
+    return [row[0] for row in result.all()]
+

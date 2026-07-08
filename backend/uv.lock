@@ -39,6 +39,18 @@ wheels = [
 ]
 
 [[package]]
+name = "apscheduler"
+version = "3.11.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tzlocal" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8c/6b/eeff360196bb20b312c9e762a820fd1b2c6d809466c755ef57863478e454/apscheduler-3.11.3.tar.gz", hash = "sha256:cd2fcc9330039a81a5893472ad49facf23a6d5604cbe1d918c835c6de7834d5a", size = 110312, upload-time = "2026-06-28T19:39:22.493Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/42/c9/8638db32514dbb9157b3d82680c6faea89283523edf9ed2415ea3884f2ae/apscheduler-3.11.3-py3-none-any.whl", hash = "sha256:bbeb2ec02d23d3c06a6c07ed7f0f3939ada6680eb121fae809a69bb42c537a30", size = 66024, upload-time = "2026-06-28T19:39:20.982Z" },
+]
+
+[[package]]
 name = "argon2-cffi"
 version = "25.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -328,6 +340,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
+    { name = "apscheduler" },
     { name = "asyncpg" },
     { name = "authlib" },
     { name = "email-validator" },
@@ -336,6 +349,7 @@ dependencies = [
     { name = "httpx" },
     { name = "itsdangerous" },
     { name = "passlib", extra = ["argon2"] },
+    { name = "pillow" },
     { name = "psycopg2-binary" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -364,6 +378,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = ">=1.14.0,<2.0.0" },
+    { name = "apscheduler", specifier = ">=3.11.3" },
     { name = "asyncpg", specifier = ">=0.30.0,<0.31.0" },
     { name = "authlib", specifier = ">=1.4.0,<2.0.0" },
     { name = "email-validator", specifier = ">=2.2.0,<3.0.0" },
@@ -375,6 +390,7 @@ requires-dist = [
     { name = "itsdangerous", specifier = ">=2.2.0,<3.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.13.0,<2.0.0" },
     { name = "passlib", extras = ["argon2"], specifier = ">=1.7.4,<2.0.0" },
+    { name = "pillow", specifier = ">=12.3.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.10,<2.10.0" },
     { name = "pydantic", specifier = ">=2.10.0,<3.0.0" },
     { name = "pydantic-settings", specifier = ">=2.7.0,<3.0.0" },
@@ -665,6 +681,23 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/5a/82/42f767fc1c1143d6fd36efb827202a2d997a375e160a71eb2888a925aac1/pathspec-1.1.1.tar.gz", hash = "sha256:17db5ecd524104a120e173814c90367a96a98d07c45b2e10c2f3919fff91bf5a", size = 135180, upload-time = "2026-04-27T01:46:08.907Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f1/d9/7fb5aa316bc299258e68c73ba3bddbc499654a07f151cba08f6153988714/pathspec-1.1.1-py3-none-any.whl", hash = "sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189", size = 57328, upload-time = "2026-04-27T01:46:07.06Z" },
+]
+
+[[package]]
+name = "pillow"
+version = "12.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/3d/bb7fca845737cf9d7dbde16ed1843984665ff2e0a518f5db43e77ec540b9/pillow-12.3.0.tar.gz", hash = "sha256:3b8182a766685eaa002637e28b4ec8d6b18819a0c71f579bf0dbaa5830297cce", size = 47025035, upload-time = "2026-07-01T11:56:38.965Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/37/bf/fb3ebff8ddcb76aac5a01389251bbbb9519922a9b520d8247c1ca864a25d/pillow-12.3.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:ba09209fbe443b4acccebe845d8a138b89a8f4fbaeedd44953490b5315d5e965", size = 5345969, upload-time = "2026-07-01T11:54:06.397Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/66/9a386a92561f402389a4fc70c18838bf6d35eb5eb5c6850b4b2dc64f5048/pillow-12.3.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:ffd0c5368496f41b0944be820fcb7a838aa6e623d250b01acf2643939c3f99d7", size = 4780323, upload-time = "2026-07-01T11:54:09.351Z" },
+    { url = "https://files.pythonhosted.org/packages/25/27/ac8f99618ffd3dde21db0f4d4b1d2ab00c0880595bfd17df103f7f39fd0c/pillow-12.3.0-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:d9c7f76c0673154f044e9d78c8655fb4213f6ca31a836df48b40fe5d187717b9", size = 6266838, upload-time = "2026-07-01T11:54:11.71Z" },
+    { url = "https://files.pythonhosted.org/packages/84/21/a35af28dcc61f37ed850a2d64c65c701321dfbf25085e469d5559360cbbf/pillow-12.3.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:78cb2c6865a35ab8ff8b75fd122f6033b92a62c82801110e48ddd6c936a45d91", size = 6940830, upload-time = "2026-07-01T11:54:13.732Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/51/8b08617af3ad95e33ce6d7dd2c99ed6c8298f7fb131636303956be022e25/pillow-12.3.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:e491916b378fba47242221bb9ead245211b70d504f495d105d17b14a24b4907c", size = 6344383, upload-time = "2026-07-01T11:54:15.756Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/72/cf78ac9780bb93c28328f408973845a309d4d145041665f734572ced1b52/pillow-12.3.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:0dd2064cbc55aaec028ef5fbb60fa47bb6c3e7918e07ff17935284b227a9d2df", size = 7052934, upload-time = "2026-07-01T11:54:17.721Z" },
+    { url = "https://files.pythonhosted.org/packages/20/20/25e0f4dc178a6bc0696793720055519a0de89e7661dae886992decbd2f81/pillow-12.3.0-cp312-cp312-win32.whl", hash = "sha256:dbce0b29841537a2fa4a214c2bbf14de3587c9680caa9b4e217568472490b28f", size = 6472684, upload-time = "2026-07-01T11:54:19.839Z" },
+    { url = "https://files.pythonhosted.org/packages/45/89/da2f7971a317f83d807fdd4065c0af40208e59e692cc43d315a71a0e96d1/pillow-12.3.0-cp312-cp312-win_amd64.whl", hash = "sha256:a2b55dd6b2a4c4b7d87ffa56bdb33fdc5fdb9a462173861a7bc097f17d91cb09", size = 7227137, upload-time = "2026-07-01T11:54:22.025Z" },
+    { url = "https://files.pythonhosted.org/packages/de/47/4845a0a6c0dbf1db8456bd9fc791f13c5ced7ced20606d08a0aacfd25b49/pillow-12.3.0-cp312-cp312-win_arm64.whl", hash = "sha256:331b624368d4f1d069149002f25f44bc61c8919ce8ddb3c45bdad8f6e2d89510", size = 2568267, upload-time = "2026-07-01T11:54:24.051Z" },
 ]
 
 [[package]]
@@ -1097,6 +1130,27 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/55/e3/70399cb7dd41c10ac53367ae42139cf4b1ca5f36bb3dc6c9d33acdb43655/typing_inspection-0.4.2.tar.gz", hash = "sha256:ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464", size = 75949, upload-time = "2025-10-01T02:14:41.687Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/dc/9b/47798a6c91d8bdb567fe2698fe81e0c6b7cb7ef4d13da4114b41d239f65d/typing_inspection-0.4.2-py3-none-any.whl", hash = "sha256:4ed1cacbdc298c220f1bd249ed5287caa16f34d44ef4e9c3d0cbad5b521545e7", size = 14611, upload-time = "2025-10-01T02:14:40.154Z" },
+]
+
+[[package]]
+name = "tzdata"
+version = "2026.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ba/19/1b9b0e29f30c6d35cb345486df41110984ea67ae69dddbc0e8a100999493/tzdata-2026.2.tar.gz", hash = "sha256:9173fde7d80d9018e02a662e168e5a2d04f87c41ea174b139fbef642eda62d10", size = 198254, upload-time = "2026-04-24T15:22:08.651Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ce/e4/dccd7f47c4b64213ac01ef921a1337ee6e30e8c6466046018326977efd95/tzdata-2026.2-py2.py3-none-any.whl", hash = "sha256:bbe9af844f658da81a5f95019480da3a89415801f6cc966806612cc7169bffe7", size = 349321, upload-time = "2026-04-24T15:22:05.876Z" },
+]
+
+[[package]]
+name = "tzlocal"
+version = "5.4.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tzdata", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/81/5b/879b2f932adfa7a053c360d50bc896c977fa6426109185f7c12ebdd0cb9d/tzlocal-5.4.4.tar.gz", hash = "sha256:8dbb8660838688a7b6ba4fed31d18dedf842afb4d47ca050d6d891c2c15f3be4", size = 31170, upload-time = "2026-06-29T08:03:40.026Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9e/a4/017a7a6cbe387d961a688ec31364ae60a5c4e22c96ae9921b79a947c855d/tzlocal-5.4.4-py3-none-any.whl", hash = "sha256:aae09f0126a8a86fa736be266eb4a471380d26a0de3bc14844e7821fee3e2a15", size = 18115, upload-time = "2026-06-29T08:03:38.666Z" },
 ]
 
 [[package]]

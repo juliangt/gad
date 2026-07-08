@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import Depends, Header
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from gad.auth.jwt import decode_token
 from gad.db import get_session
@@ -33,7 +34,9 @@ async def get_current_user(
     except (KeyError, ValueError) as e:
         raise InvalidTokenError("Token malformado") from e
 
-    result = await session.execute(select(User).where(User.id == user_id))
+    result = await session.execute(
+        select(User).options(selectinload(User.preferences)).where(User.id == user_id)
+    )
     user = result.scalar_one_or_none()
     if user is None:
         raise AuthError("Usuario no encontrado")
