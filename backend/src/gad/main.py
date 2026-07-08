@@ -10,6 +10,7 @@ from gad.config import settings
 from gad.exceptions import GADError
 from gad.health import router as health_router
 from gad.logging_setup import setup_logging
+from gad.plans.router import router as plans_router
 from gad.redis_client import redis_client
 from gad.users.router import router as users_router
 
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(users_router)
+    app.include_router(plans_router)
 
     from gad.middleware.rate_limit import setup_rate_limit
 
