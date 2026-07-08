@@ -9,6 +9,7 @@ from gad.auth.router import router as auth_router
 from gad.config import settings
 from gad.exceptions import GADError
 from gad.health import router as health_router
+from gad.jobs.scheduler import shutdown_scheduler, start_scheduler
 from gad.logging_setup import setup_logging
 from gad.plans.router import router as plans_router
 from gad.redis_client import redis_client
@@ -22,7 +23,13 @@ async def lifespan(app: FastAPI):
     # /health/ready lo reportará. No frenamos el arranque.
     with suppress(Exception):
         await redis_client.ping()
+    # El scheduler de expiración también es best-effort: en tests/e2e sin
+    # infra completa no debe frenar el arranque.
+    with suppress(Exception):
+        await start_scheduler()
     yield
+    with suppress(Exception):
+        await shutdown_scheduler()
     with suppress(Exception):
         await redis_client.aclose()
 
