@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from gad.auth.router import router as auth_router
 from gad.chat.manager import manager
+from gad.chat.router import router as chat_rest_router
 from gad.chat.websocket import router as chat_router
 from gad.config import settings
 from gad.exceptions import GADError
@@ -69,6 +70,7 @@ def create_app() -> FastAPI:
     app.include_router(plans_router)
     app.include_router(matching_router)
     app.include_router(chat_router)
+    app.include_router(chat_rest_router)
 
     from gad.middleware.rate_limit import setup_rate_limit
 
