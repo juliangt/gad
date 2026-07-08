@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from gad.admin.router import router as admin_router
 from gad.auth.router import router as auth_router
 from gad.chat.manager import manager
 from gad.chat.router import router as chat_rest_router
@@ -83,6 +84,7 @@ def create_app() -> FastAPI:
     app.include_router(safety_public_router)
     app.include_router(reviews_router)
     app.include_router(reports_router)
+    app.include_router(admin_router)
 
     from gad.middleware.rate_limit import setup_rate_limit
 
