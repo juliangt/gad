@@ -1,5 +1,5 @@
 # backend/src/gad/main.py
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,9 +17,13 @@ from gad.users.router import router as users_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
-    await redis_client.ping()
+    # El ping a Redis es best-effort: si falla (ej. en tests sin Redis),
+    # /health/ready lo reportará. No frenamos el arranque.
+    with suppress(Exception):
+        await redis_client.ping()
     yield
-    await redis_client.aclose()
+    with suppress(Exception):
+        await redis_client.aclose()
 
 
 def create_app() -> FastAPI:

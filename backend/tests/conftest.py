@@ -1,9 +1,16 @@
 # backend/tests/conftest.py
 import os
 
-# Deshabilita el rate limiting global ANTES de importar gad.* para que el limiter
-# singleton no intente conectar al Redis del .env (inaccesible en tests).
-# El test dedicado test_rate_limit.py usa su propio limiter con testcontainers.
+# Setea env vars requeridas ANTES de importar gad.* para que el singleton
+# settings = get_settings() no falle en entornos sin .env (ej. CI).
+# Los tests que necesitan valores específicos (test_config, test_jwt) usan
+# monkeypatch + get_settings.cache_clear() para override.
+# Los tests de DB/Redis usan testcontainers con sus propios engines/clients.
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+os.environ.setdefault("JWT_SECRET", "test-secret-at-least-16-chars")
+# Deshabilita el rate limiting global: el limiter singleton intentaría conectar
+# al REDIS_URL (inaccesible en tests). test_rate_limit.py usa su propio limiter.
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 from collections.abc import AsyncGenerator
