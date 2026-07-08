@@ -2,7 +2,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from geoalchemy2 import Geometry
 from sqlalchemy import cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from gad.auth.dependencies import get_current_user
 from gad.db import get_session
 from gad.exceptions import NotFoundError
+from gad.middleware.rate_limit import limiter
 from gad.models.plan import Plan
 from gad.models.user import User
 from gad.plans.schemas import HostSummary, PlanIn, PlanListItem, PlanOut
@@ -60,7 +61,9 @@ async def _plan_to_out(session: AsyncSession, plan: Plan) -> PlanOut:
 
 
 @router.post("", response_model=PlanOut, status_code=201)
+@limiter.limit("10/hour")
 async def create_plan_endpoint(
+    request: Request,
     data: PlanIn,
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
