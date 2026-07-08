@@ -34,4 +34,9 @@ __all__ = [
     "ReviewFlag",
     "SafetyEventType",
     "VerificationLevel",
+    "User",
+    "UserPreferences",
 ]
+
+
+from gad.models.user import User, UserPreferences  # noqa: E402, F401
