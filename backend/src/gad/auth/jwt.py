@@ -1,4 +1,5 @@
 # backend/src/gad/auth/jwt.py
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -15,6 +16,7 @@ def create_access_token(user_id: str) -> str:
         "type": "access",
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(minutes=settings.access_token_expire_minutes)).timestamp()),
+        "jti": secrets.token_hex(16),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
@@ -27,6 +29,7 @@ def create_refresh_token(user_id: str) -> str:
         "type": "refresh",
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(days=settings.refresh_token_expire_days)).timestamp()),
+        "jti": secrets.token_hex(16),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
