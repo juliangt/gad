@@ -19,6 +19,8 @@ from gad.matching.schemas import (
 from gad.matching.service import (
     accept_application,
     apply_to_plan,
+    cancel_match,
+    complete_match,
     get_match,
     list_applications_for_plan,
     list_my_applications,
@@ -183,4 +185,24 @@ async def get_match_endpoint(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> MatchOut:
     match = await get_match(session, match_id)
+    return await _match_to_out(session, match, current_user)
+
+
+@router.post("/matches/{match_id}/complete", response_model=MatchOut)
+async def complete_match_endpoint(
+    match_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> MatchOut:
+    match = await complete_match(session, current_user, match_id)
+    return await _match_to_out(session, match, current_user)
+
+
+@router.post("/matches/{match_id}/cancel", response_model=MatchOut)
+async def cancel_match_endpoint(
+    match_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> MatchOut:
+    match = await cancel_match(session, current_user, match_id)
     return await _match_to_out(session, match, current_user)

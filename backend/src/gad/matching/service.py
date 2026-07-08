@@ -254,3 +254,45 @@ async def get_match(session: AsyncSession, match_id: UUID) -> Match:
     return match
 
 
+async def complete_match(
+    session: AsyncSession, user: User, match_id: UUID
+) -> Match:
+    match = await get_match(session, match_id)
+    # Verificar participación
+    result = await session.execute(
+        select(MatchParticipant).where(
+            MatchParticipant.match_id == match_id,
+            MatchParticipant.user_id == user.id,
+        )
+    )
+    if result.scalar_one_or_none() is None:
+        raise NotFoundError("Match no encontrado")
+
+    match.status = MatchStatus.completed
+    match.ended_at = datetime.now(UTC)
+    await session.commit()
+    await session.refresh(match)
+    return match
+
+
+async def cancel_match(
+    session: AsyncSession, user: User, match_id: UUID
+) -> Match:
+    match = await get_match(session, match_id)
+    result = await session.execute(
+        select(MatchParticipant).where(
+            MatchParticipant.match_id == match_id,
+            MatchParticipant.user_id == user.id,
+        )
+    )
+    if result.scalar_one_or_none() is None:
+        raise NotFoundError("Match no encontrado")
+
+    match.status = MatchStatus.cancelled
+    if match.ended_at is None:
+        match.ended_at = datetime.now(UTC)
+    await session.commit()
+    await session.refresh(match)
+    return match
+
+
