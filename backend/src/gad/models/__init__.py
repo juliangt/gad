@@ -1,4 +1,5 @@
 # backend/src/gad/models/__init__.py
+from gad.models.availability import Availability
 from gad.models.base import Base, TimestampMixin
 from gad.models.enums import (
     ActivityType,
@@ -16,7 +17,6 @@ from gad.models.enums import (
     SafetyEventType,
     VerificationLevel,
 )
-from gad.models.availability import Availability
 from gad.models.match import Match, MatchParticipant, Message
 from gad.models.plan import Plan, PlanApplication
 from gad.models.review import Review

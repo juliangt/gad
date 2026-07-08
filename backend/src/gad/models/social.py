@@ -3,11 +3,12 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PgUUID
+from sqlalchemy import DateTime, Enum, ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from gad.models.base import Base, TimestampMixin
+from gad.models.base import Base
 from gad.models.enums import NotificationType
 
 

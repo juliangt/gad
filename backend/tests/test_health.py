@@ -1,6 +1,5 @@
 # backend/tests/test_health.py
 import pytest
-from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from gad.main import create_app

@@ -1,6 +1,6 @@
 # backend/src/gad/auth/jwt.py
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from jose import JWTError, jwt
@@ -10,7 +10,7 @@ from gad.config import get_settings
 
 def create_access_token(user_id: str) -> str:
     settings = get_settings()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": user_id,
         "type": "access",
@@ -23,7 +23,7 @@ def create_access_token(user_id: str) -> str:
 
 def create_refresh_token(user_id: str) -> str:
     settings = get_settings()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": user_id,
         "type": "refresh",

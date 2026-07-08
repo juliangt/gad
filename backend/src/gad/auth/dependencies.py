@@ -13,8 +13,8 @@ from gad.models.user import User
 
 
 async def get_current_user(
+    session: Annotated[AsyncSession, Depends(get_session)],
     authorization: Annotated[str | None, Header()] = None,
-    session: AsyncSession = Depends(get_session),
 ) -> User:
     if not authorization or not authorization.startswith("Bearer "):
         raise AuthError("Falta token de autorización")

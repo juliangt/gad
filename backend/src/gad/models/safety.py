@@ -4,8 +4,9 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from geoalchemy2 import Geography
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PgUUID
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from gad.models.base import Base, TimestampMixin

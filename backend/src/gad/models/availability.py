@@ -4,7 +4,8 @@ from uuid import UUID, uuid4
 
 from geoalchemy2 import Geography
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
-from sqlalchemy.dialects.postgresql import ARRAY, UUID as PgUUID
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from gad.models.base import Base, TimestampMixin

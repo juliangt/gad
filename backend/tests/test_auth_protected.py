@@ -4,7 +4,6 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from gad.auth.dependencies import get_current_user
 from gad.auth.router import router
 from gad.auth.service import register
 from gad.schemas.auth import RegisterIn

@@ -3,7 +3,8 @@ from datetime import date, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, Date, DateTime, Enum, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import ARRAY, UUID as PgUUID
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from gad.models.base import Base, TimestampMixin

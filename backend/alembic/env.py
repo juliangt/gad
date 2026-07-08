@@ -2,15 +2,14 @@
 import asyncio
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from gad.config import settings
-
 # Importa todos los modelos para que aparezcan en Base.metadata al autogenerar
 import gad.models  # noqa: F401
+from alembic import context
+from gad.config import settings
 from gad.models import Base
 
 config = context.config
