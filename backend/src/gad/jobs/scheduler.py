@@ -3,9 +3,16 @@ import asyncio
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
+from gad.db import async_session_maker
+from gad.jobs.expire_availability import expire_availability
 from gad.jobs.expire_plans import expire_plans
 
 _scheduler: AsyncIOScheduler | None = None
+
+
+async def _run_expire_availability() -> None:
+    async with async_session_maker() as session:
+        await expire_availability(session)
 
 
 def setup_scheduler() -> AsyncIOScheduler:
@@ -18,6 +25,13 @@ def setup_scheduler() -> AsyncIOScheduler:
         trigger="interval",
         minutes=5,
         id="expire_plans",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        lambda: asyncio.create_task(_run_expire_availability()),
+        trigger="interval",
+        minutes=5,
+        id="expire_availability",
         replace_existing=True,
     )
     _scheduler = scheduler
