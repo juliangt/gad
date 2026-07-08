@@ -2,12 +2,13 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.auth.dependencies import get_current_user
 from gad.db import get_session
+from gad.middleware.rate_limit import limiter
 from gad.models.user import User
 from gad.reviews.schemas import ReviewerSummary, ReviewIn, ReviewOut, ReviewWithReviewer
 from gad.reviews.service import create_review, list_reviews_for_user
@@ -16,7 +17,9 @@ router = APIRouter(tags=["reviews"])
 
 
 @router.post("/reviews", response_model=ReviewOut, status_code=201)
+@limiter.limit("20/day")
 async def create_review_endpoint(
+    request: Request,
     data: ReviewIn,
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
