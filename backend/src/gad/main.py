@@ -11,6 +11,7 @@ from gad.exceptions import GADError
 from gad.health import router as health_router
 from gad.jobs.scheduler import shutdown_scheduler, start_scheduler
 from gad.logging_setup import setup_logging
+from gad.matching.router import router as matching_router
 from gad.plans.router import router as plans_router
 from gad.redis_client import redis_client
 from gad.users.router import router as users_router
@@ -59,6 +60,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(plans_router)
+    app.include_router(matching_router)
 
     from gad.middleware.rate_limit import setup_rate_limit
 
