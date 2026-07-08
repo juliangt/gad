@@ -188,3 +188,45 @@ async def withdraw_application(
     application.status = ApplicationStatus.withdrawn
     await session.commit()
 
+
+async def list_applications_for_plan(
+    session: AsyncSession, host: User, plan_id: UUID
+) -> list[PlanApplication]:
+    plan = await _load_plan(session, plan_id)
+    if plan.host_id != host.id:
+        raise NotFoundError("Plan no encontrado")
+    result = await session.execute(
+        select(PlanApplication)
+        .where(PlanApplication.plan_id == plan_id)
+        .order_by(PlanApplication.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def list_my_applications(session: AsyncSession, user: User) -> list[PlanApplication]:
+    result = await session.execute(
+        select(PlanApplication)
+        .where(PlanApplication.applicant_id == user.id)
+        .order_by(PlanApplication.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def list_my_matches(session: AsyncSession, user: User) -> list[Match]:
+    result = await session.execute(
+        select(Match)
+        .join(MatchParticipant, MatchParticipant.match_id == Match.id)
+        .where(MatchParticipant.user_id == user.id)
+        .order_by(Match.started_at.desc())
+    )
+    return list(result.scalars().unique().all())
+
+
+async def get_match(session: AsyncSession, match_id: UUID) -> Match:
+    result = await session.execute(select(Match).where(Match.id == match_id))
+    match = result.scalar_one_or_none()
+    if match is None:
+        raise NotFoundError("Match no encontrado")
+    return match
+
+
