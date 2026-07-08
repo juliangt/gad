@@ -49,6 +49,23 @@ def test_user_preferences_has_correct_pk():
     assert len(cols["user_id"].foreign_keys) == 1
 
 
+def test_user_has_is_admin():
+    from gad.models import User
+
+    assert "is_admin" in {c.name for c in User.__table__.columns}
+
+
+def test_report_table_exists():
+    from gad.models import Report
+
+    expected = {
+        "id", "reporter_id", "reported_id", "reason", "description",
+        "status", "payload", "created_at", "updated_at",
+    }
+    actual = {c.name for c in Report.__table__.columns}
+    assert expected.issubset(actual)
+
+
 def test_all_expected_tables_exist():
     from gad.models import Base
 
@@ -56,7 +73,8 @@ def test_all_expected_tables_exist():
         "users", "user_preferences", "plans", "plan_applications",
         "matches", "match_participants", "messages", "reviews",
         "availability", "trusted_contacts", "safety_sessions",
-        "safety_events", "blocks", "notifications",
+        "safety_events", "blocks", "notifications", "push_subscriptions",
+        "reports",
     }
     actual = set(Base.metadata.tables.keys())
     missing = expected - actual

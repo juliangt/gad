@@ -40,6 +40,7 @@ class User(Base, TimestampMixin):
         nullable=False,
         default=VerificationLevel.none,
     )
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     last_active_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
