@@ -85,3 +85,48 @@ async def test_cancel_plan_sets_cancelled(db_session):
     )
     cancelled = await cancel_plan(db_session, plan)
     assert cancelled.status == PlanStatus.cancelled
+
+
+@pytest.mark.asyncio
+async def test_list_nearby_plans_returns_only_close_open(db_session):
+    from gad.plans.service import list_nearby_plans
+
+    host = await _make_host(db_session)
+    # Plan cercano
+    await create_plan(
+        db_session, host,
+        PlanIn(activity_type=ActivityType.coffee, mode=PlanMode.now, title="A",
+               location=PlanLocationIn(lat=-34.59, lng=-58.43, label="X")),
+    )
+    # Plan lejano (Caballito ~6km)
+    await create_plan(
+        db_session, host,
+        PlanIn(activity_type=ActivityType.coffee, mode=PlanMode.now, title="B",
+               location=PlanLocationIn(lat=-34.632, lng=-58.444, label="Caballito")),
+    )
+
+    viewer = await _make_host(db_session, "viewer@example.com")
+    nearby = await list_nearby_plans(
+        db_session, viewer=viewer, lat=-34.59, lng=-58.43, radius_m=2000
+    )
+    titles = [p.title for p in nearby]
+    assert "A" in titles
+    assert "B" not in titles
+
+
+@pytest.mark.asyncio
+async def test_list_nearby_excludes_own_plans(db_session):
+    from gad.plans.service import list_nearby_plans
+
+    host = await _make_host(db_session)
+    await create_plan(
+        db_session, host,
+        PlanIn(activity_type=ActivityType.coffee, mode=PlanMode.now, title="Mine",
+               location=PlanLocationIn(lat=-34.59, lng=-58.43, label="X")),
+    )
+
+    nearby = await list_nearby_plans(
+        db_session, viewer=host, lat=-34.59, lng=-58.43, radius_m=5000
+    )
+    assert all(p.title != "Mine" for p in nearby)
+
