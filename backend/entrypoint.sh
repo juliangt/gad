@@ -2,7 +2,9 @@
 set -e
 
 echo "Esperando DB..."
-until python -c "import asyncio, asyncpg; asyncio.run(asyncpg.connect('${DATABASE_URL/postgresql+asyncpg/postgresql}'))" 2>/dev/null; do
+# Convierte el scheme asyncpg→psycopg para asyncpg.connect() del health check.
+PG_URL=$(echo "$DATABASE_URL" | sed 's|postgresql+asyncpg|postgresql|')
+until python -c "import asyncio, asyncpg; asyncio.run(asyncpg.connect('$PG_URL'))" 2>/dev/null; do
   echo "DB no lista, reintentando..."
   sleep 1
 done
