@@ -19,6 +19,8 @@ from gad.notifications.push_router import router as push_router
 from gad.notifications.router import router as notifications_router
 from gad.plans.router import router as plans_router
 from gad.redis_client import redis_client
+from gad.safety.public_router import router as safety_public_router
+from gad.safety.router import router as safety_router
 from gad.users.router import router as users_router
 
 
@@ -75,6 +77,8 @@ def create_app() -> FastAPI:
     app.include_router(chat_rest_router)
     app.include_router(notifications_router)
     app.include_router(push_router)
+    app.include_router(safety_router)
+    app.include_router(safety_public_router)
 
     from gad.middleware.rate_limit import setup_rate_limit
 
