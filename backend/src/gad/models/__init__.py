@@ -21,7 +21,7 @@ from gad.models.match import Match, MatchParticipant, Message
 from gad.models.plan import Plan, PlanApplication
 from gad.models.review import Review
 from gad.models.safety import SafetyEvent, SafetySession, TrustedContact
-from gad.models.social import Block, Notification
+from gad.models.social import Block, Notification, PushSubscription
 from gad.models.user import User, UserPreferences
 
 __all__ = [
@@ -49,6 +49,7 @@ __all__ = [
     "Notification",
     "Plan",
     "PlanApplication",
+    "PushSubscription",
     "Review",
     "SafetyEvent",
     "SafetySession",

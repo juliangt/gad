@@ -6,12 +6,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from gad.auth.router import router as auth_router
+from gad.chat.manager import manager
+from gad.chat.router import router as chat_rest_router
+from gad.chat.websocket import router as chat_router
 from gad.config import settings
 from gad.exceptions import GADError
 from gad.health import router as health_router
 from gad.jobs.scheduler import shutdown_scheduler, start_scheduler
 from gad.logging_setup import setup_logging
 from gad.matching.router import router as matching_router
+from gad.notifications.push_router import router as push_router
+from gad.notifications.router import router as notifications_router
 from gad.plans.router import router as plans_router
 from gad.redis_client import redis_client
 from gad.users.router import router as users_router
@@ -28,7 +33,12 @@ async def lifespan(app: FastAPI):
     # infra completa no debe frenar el arranque.
     with suppress(Exception):
         await start_scheduler()
+    # El subscriber de chat (Redis pub/sub) también es best-effort.
+    with suppress(Exception):
+        await manager.start_subscriber()
     yield
+    with suppress(Exception):
+        await manager.stop_subscriber()
     with suppress(Exception):
         await shutdown_scheduler()
     with suppress(Exception):
@@ -61,6 +71,10 @@ def create_app() -> FastAPI:
     app.include_router(users_router)
     app.include_router(plans_router)
     app.include_router(matching_router)
+    app.include_router(chat_router)
+    app.include_router(chat_rest_router)
+    app.include_router(notifications_router)
+    app.include_router(push_router)
 
     from gad.middleware.rate_limit import setup_rate_limit
 
