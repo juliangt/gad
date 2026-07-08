@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from gad.auth.router import router as auth_router
+from gad.chat.manager import manager
+from gad.chat.websocket import router as chat_router
 from gad.config import settings
 from gad.exceptions import GADError
 from gad.health import router as health_router
@@ -28,7 +30,12 @@ async def lifespan(app: FastAPI):
     # infra completa no debe frenar el arranque.
     with suppress(Exception):
         await start_scheduler()
+    # El subscriber de chat (Redis pub/sub) también es best-effort.
+    with suppress(Exception):
+        await manager.start_subscriber()
     yield
+    with suppress(Exception):
+        await manager.stop_subscriber()
     with suppress(Exception):
         await shutdown_scheduler()
     with suppress(Exception):
@@ -61,6 +68,7 @@ def create_app() -> FastAPI:
     app.include_router(users_router)
     app.include_router(plans_router)
     app.include_router(matching_router)
+    app.include_router(chat_router)
 
     from gad.middleware.rate_limit import setup_rate_limit
 
