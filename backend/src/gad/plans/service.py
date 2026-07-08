@@ -5,6 +5,8 @@ from geoalchemy2.elements import WKTElement
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gad.availability.alerts import notify_matching_users
+from gad.availability.matcher import find_matching_availability
 from gad.exceptions import NotFoundError
 from gad.models.enums import ActivityType, PlanMode, PlanStatus
 from gad.models.geo import snap_to_grid
@@ -47,6 +49,11 @@ async def create_plan(session: AsyncSession, host: User, data: PlanIn) -> Plan:
     session.add(plan)
     await session.commit()
     await session.refresh(plan)
+
+    # Alertar a usuarios en modo disponible que matcheen este plan
+    availabilities = await find_matching_availability(session, plan)
+    if availabilities:
+        await notify_matching_users(session, plan, availabilities)
     return plan
 
 
