@@ -92,7 +92,7 @@ async def list_nearby_plans(
     exclude_ids = blocked_subq.union(blocked_by_subq)
 
     stmt = (
-        select(Plan, Plan.location_grid.ST_Distance(viewer_point).label("distance"))
+        select(Plan)
         .join(User, User.id == Plan.host_id)
         .where(
             Plan.status == PlanStatus.open,
@@ -101,7 +101,7 @@ async def list_nearby_plans(
             Plan.location_grid.ST_DWithin(viewer_point, radius_m),
             ~User.id.in_(exclude_ids),
         )
-        .order_by("distance")
+        .order_by(Plan.location_grid.ST_Distance(viewer_point))
         .limit(limit)
     )
     if activity is not None:
@@ -110,5 +110,5 @@ async def list_nearby_plans(
         stmt = stmt.where(Plan.mode == mode)
 
     result = await session.execute(stmt)
-    return [row[0] for row in result.all()]
+    return list(result.scalars().all())
 
