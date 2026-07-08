@@ -1,7 +1,10 @@
 # backend/src/gad/users/service.py
+import io
 from datetime import UTC, datetime
 from uuid import UUID
 
+from fastapi import UploadFile
+from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -10,6 +13,7 @@ from gad.exceptions import ConflictError, NotFoundError
 from gad.models.social import Block
 from gad.models.user import User, UserPreferences
 from gad.schemas.user import PreferencesIn, UserUpdateIn
+from gad.storage import get_storage
 
 
 async def get_or_create_preferences(session: AsyncSession, user: User) -> UserPreferences:
@@ -96,3 +100,21 @@ async def is_blocked_pair(
         )
     )
     return result.scalar_one_or_none() is not None
+
+
+async def upload_avatar(session: AsyncSession, user: User, file: UploadFile) -> str:
+    """Redimensiona a 512x512, guarda y actualiza user.avatar_url."""
+    raw = await file.read()
+    img = Image.open(io.BytesIO(raw)).convert("RGB")
+    img.thumbnail((512, 512))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=85)
+    data = buf.getvalue()
+
+    storage = get_storage()
+    path = storage.avatar_path(str(user.id), "jpg")
+    url = await storage.save(path, data, "image/jpeg")
+    user.avatar_url = url
+    await session.commit()
+    await session.refresh(user)
+    return url
