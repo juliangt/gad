@@ -13,10 +13,17 @@ from gad.matching.notifications import (
     publish_new_application,
 )
 from gad.matching.schemas import ApplicationIn
-from gad.models.enums import ApplicationStatus, MatchRole, MatchStatus, PlanStatus
+from gad.models.enums import (
+    ApplicationStatus,
+    MatchRole,
+    MatchStatus,
+    NotificationType,
+    PlanStatus,
+)
 from gad.models.match import Match, MatchParticipant
 from gad.models.plan import Plan, PlanApplication
 from gad.models.user import User
+from gad.notifications.service import create_notification
 from gad.users.service import is_blocked_pair
 
 
@@ -66,6 +73,14 @@ async def apply_to_plan(
     with suppress(Exception):
         await publish_new_application(
             str(plan.host_id), str(plan_id), str(applicant.id)
+        )
+    # Notificación in-app para el host
+    with suppress(Exception):
+        await create_notification(
+            session,
+            plan.host_id,
+            NotificationType.new_application,
+            {"plan_id": str(plan_id), "applicant_id": str(applicant.id)},
         )
     return application
 
@@ -151,6 +166,15 @@ async def accept_application(
             await publish_match_created(
                 str(match.id), str(plan.id), [str(u) for u in participant_ids]
             )
+        # Notificación in-app de match para todos los participantes
+        for uid in participant_ids:
+            with suppress(Exception):
+                await create_notification(
+                    session,
+                    uid,
+                    NotificationType.match,
+                    {"match_id": str(match.id), "plan_id": str(plan.id)},
+                )
         await session.refresh(match)
     return match
 

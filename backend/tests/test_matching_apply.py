@@ -59,3 +59,18 @@ async def test_apply_twice_raises(db_session):
     await apply_to_plan(db_session, applicant, plan.id, ApplicationIn())
     with pytest.raises(ConflictError):
         await apply_to_plan(db_session, applicant, plan.id, ApplicationIn())
+
+
+@pytest.mark.asyncio
+async def test_apply_creates_notification_for_host(db_session):
+    from gad.notifications.service import list_notifications
+
+    host = await _make_user(db_session, "hostn@example.com")
+    applicant = await _make_user(db_session, "appn@example.com")
+    plan = await _make_plan(db_session, host)
+
+    await apply_to_plan(db_session, applicant, plan.id, ApplicationIn())
+
+    notifs = await list_notifications(db_session, host.id)
+    assert len(notifs) == 1
+    assert notifs[0].type.value == "new_application"
