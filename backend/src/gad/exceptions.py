@@ -38,6 +38,11 @@ class ConflictError(GADError):
     code = "conflict"
 
 
+class ValidationError(GADError):
+    status_code = 422
+    code = "validation_error"
+
+
 class OAuthError(GADError):
     status_code = 400
     code = "oauth_error"
