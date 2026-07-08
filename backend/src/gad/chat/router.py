@@ -21,7 +21,7 @@ async def history_endpoint(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
     limit: int = Query(default=50, ge=1, le=200),
-    before: datetime | None = Query(default=None),
+    before: Annotated[datetime | None, Query()] = None,
 ) -> list[MessageOut]:
     messages = await get_history(
         session, current_user, match_id, limit=limit, before=before
