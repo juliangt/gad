@@ -93,3 +93,9 @@ class ReviewFlag(str, enum.Enum):
     no_show = "no_show"
     inappropriate = "inappropriate"
     false_info = "false_info"
+
+
+class UserStatus(str, enum.Enum):
+    active = "active"
+    suspended = "suspended"
+    deleted = "deleted"
