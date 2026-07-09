@@ -161,3 +161,24 @@ async def test_delete_own_message(client, db_session):
     async with client as c:
         resp = await c.delete(f"/messages/{msg.id}", headers=headers)
     assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_notification_read_all_and_delete(client, db_session):
+    from gad.models.enums import NotificationType
+    from gad.notifications.service import create_notification
+
+    tokens = await register(
+        db_session,
+        RegisterIn(email="n@example.com", password="12345678", display_name="N"),
+    )
+    for _ in range(3):
+        await create_notification(db_session, tokens.user_id, NotificationType.match, {})
+    headers = {"Authorization": f"Bearer {tokens.access_token}"}
+    async with client as c:
+        resp = await c.post("/notifications/read-all", headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["marked"] == 3
+        resp_del = await c.delete("/notifications", headers=headers)
+        assert resp_del.status_code == 200
+        assert resp_del.json()["deleted"] == 3

@@ -10,7 +10,13 @@ from gad.auth.dependencies import get_current_user
 from gad.db import get_session
 from gad.models.user import User
 from gad.notifications.schemas import NotificationOut
-from gad.notifications.service import list_notifications, mark_read, unread_count
+from gad.notifications.service import (
+    delete_all,
+    list_notifications,
+    mark_all_read,
+    mark_read,
+    unread_count,
+)
 from gad.schemas.pagination import PaginatedOut
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -53,3 +59,21 @@ async def mark_read_endpoint(
 ) -> dict[str, str]:
     await mark_read(session, current_user.id, notification_id)
     return {"message": "Notificación marcada como leída"}
+
+
+@router.post("/read-all")
+async def mark_all_read_endpoint(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, int]:
+    count = await mark_all_read(session, current_user.id)
+    return {"marked": count}
+
+
+@router.delete("")
+async def delete_all_endpoint(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, int]:
+    count = await delete_all(session, current_user.id)
+    return {"deleted": count}
