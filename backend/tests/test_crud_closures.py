@@ -109,3 +109,55 @@ async def test_unblock_user(client, db_session):
         # Verificar que ya no está
         resp_list = await c.get("/me/blocks", headers=headers)
         assert resp_list.json() == []
+
+
+async def _seed_plan(db_session, host_id):
+    from gad.models.enums import ActivityType, PlanMode
+    from gad.models.plan import Plan
+
+    plan = Plan(
+        host_id=host_id,
+        activity_type=ActivityType.coffee,
+        mode=PlanMode.now,
+        title="T",
+        location_label="X",
+        location_grid="SRID=4326;POINT(-58.4 -34.6)",
+        expires_at=datetime.now(UTC) + timedelta(hours=2),
+    )
+    db_session.add(plan)
+    await db_session.commit()
+    await db_session.refresh(plan)
+    return plan.id
+
+
+@pytest.mark.asyncio
+async def test_delete_own_message(client, db_session):
+    from gad.models.match import Match, Message
+
+    tokens = await register(
+        db_session,
+        RegisterIn(email="c@example.com", password="12345678", display_name="C"),
+    )
+    plan_id = await _seed_plan(db_session, tokens.user_id)
+    match = Match(
+        plan_id=plan_id,
+        status="active",
+        started_at=datetime.now(UTC),
+        location_sharing_active=False,
+    )
+    db_session.add(match)
+    await db_session.commit()
+    await db_session.refresh(match)
+    msg = Message(
+        match_id=match.id,
+        sender_id=tokens.user_id,
+        content="hola",
+        created_at=datetime.now(UTC),
+    )
+    db_session.add(msg)
+    await db_session.commit()
+    await db_session.refresh(msg)
+    headers = {"Authorization": f"Bearer {tokens.access_token}"}
+    async with client as c:
+        resp = await c.delete(f"/messages/{msg.id}", headers=headers)
+    assert resp.status_code == 200

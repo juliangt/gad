@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gad.exceptions import ValidationError
+from gad.exceptions import NotFoundError, ValidationError
 from gad.models.match import MatchParticipant, Message
 from gad.models.user import User
 
@@ -98,3 +98,14 @@ async def get_unread_count(
         )
     )
     return result.scalar_one()
+
+
+async def delete_message(session: AsyncSession, user: User, message_id: UUID) -> None:
+    result = await session.execute(select(Message).where(Message.id == message_id))
+    msg = result.scalar_one_or_none()
+    if msg is None:
+        raise NotFoundError("Mensaje no encontrado")
+    if msg.sender_id != user.id:
+        raise ValidationError("Solo podés borrar tus propios mensajes")
+    await session.delete(msg)
+    await session.commit()
