@@ -1,5 +1,6 @@
 # backend/tests/test_migrations.py
 import pytest
+import sqlalchemy as sa
 
 
 @pytest.mark.asyncio
@@ -23,3 +24,16 @@ async def test_schema_has_all_expected_tables(db_session):
     }
     missing = expected - tables
     assert not missing, f"Faltan tablas: {missing}"
+
+
+@pytest.mark.asyncio
+async def test_user_status_column_exists(db_engine):
+    """La migración 0002 añade la columna status a users."""
+    async with db_engine.connect() as conn:
+        cols = await conn.run_sync(
+            lambda sync_conn: [
+                c["name"] for c in sa.inspect(sync_conn).get_columns("users")
+            ]
+        )
+    assert "status" in cols
+
