@@ -12,7 +12,7 @@ from gad.db import get_session
 from gad.middleware.rate_limit import limiter
 from gad.models.user import User
 from gad.reviews.schemas import ReviewerSummary, ReviewIn, ReviewOut, ReviewWithReviewer
-from gad.reviews.service import create_review, list_reviews_for_user
+from gad.reviews.service import create_review, delete_review, list_reviews_for_user
 from gad.schemas.pagination import PaginatedOut
 
 router = APIRouter(tags=["reviews"])
@@ -63,3 +63,13 @@ async def list_reviews_endpoint(
         )
     next_cursor = out[-1].created_at.isoformat() if len(out) == limit and out else None
     return PaginatedOut[ReviewWithReviewer](items=out, next_cursor=next_cursor)
+
+
+@router.delete("/reviews/{review_id}")
+async def delete_review_endpoint(
+    review_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, str]:
+    await delete_review(session, current_user, review_id)
+    return {"message": "Reseña eliminada"}

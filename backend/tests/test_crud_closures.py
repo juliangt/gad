@@ -253,3 +253,65 @@ async def test_revoke_share_link(client, db_session):
             params={"token": token},
         )
     assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_delete_own_review(client, db_session):
+    from gad.models.enums import ActivityType, MatchRole, MatchStatus, PlanMode
+    from gad.models.match import Match, MatchParticipant
+    from gad.models.plan import Plan
+    from gad.models.review import Review
+
+    tokens = await register(
+        db_session,
+        RegisterIn(email="rv@example.com", password="12345678", display_name="Rv"),
+    )
+    other = await register(
+        db_session,
+        RegisterIn(email="rv2@example.com", password="12345678", display_name="Rv2"),
+    )
+    plan = Plan(
+        host_id=other.user_id,
+        activity_type=ActivityType.coffee,
+        mode=PlanMode.now,
+        title="T",
+        location_label="X",
+        location_grid="SRID=4326;POINT(-58.4 -34.6)",
+        expires_at=datetime.now(UTC) + timedelta(hours=2),
+    )
+    db_session.add(plan)
+    await db_session.commit()
+    await db_session.refresh(plan)
+    match = Match(
+        plan_id=plan.id,
+        status=MatchStatus.completed,
+        started_at=datetime.now(UTC) - timedelta(days=1),
+        ended_at=datetime.now(UTC) - timedelta(hours=1),
+        location_sharing_active=False,
+    )
+    db_session.add(match)
+    await db_session.commit()
+    await db_session.refresh(match)
+    for uid, role in [
+        (tokens.user_id, MatchRole.participant),
+        (other.user_id, MatchRole.host),
+    ]:
+        db_session.add(
+            MatchParticipant(
+                match_id=match.id, user_id=uid, role=role, joined_at=datetime.now(UTC)
+            )
+        )
+    review = Review(
+        match_id=match.id,
+        reviewer_id=tokens.user_id,
+        reviewee_id=other.user_id,
+        rating=5,
+        comment="ok",
+    )
+    db_session.add(review)
+    await db_session.commit()
+    await db_session.refresh(review)
+    headers = {"Authorization": f"Bearer {tokens.access_token}"}
+    async with client as c:
+        resp = await c.delete(f"/reviews/{review.id}", headers=headers)
+    assert resp.status_code == 200
