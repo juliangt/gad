@@ -182,3 +182,30 @@ async def test_notification_read_all_and_delete(client, db_session):
         resp_del = await c.delete("/notifications", headers=headers)
         assert resp_del.status_code == 200
         assert resp_del.json()["deleted"] == 3
+
+
+@pytest.mark.asyncio
+async def test_push_unsubscribe(client, db_session):
+    from gad.models.social import PushSubscription
+
+    tokens = await register(
+        db_session,
+        RegisterIn(email="p@example.com", password="12345678", display_name="P"),
+    )
+    sub = PushSubscription(
+        id=uuid4(),
+        user_id=tokens.user_id,
+        endpoint="https://fcm/x",
+        p256dh="k",
+        auth="a",
+        created_at=datetime.now(UTC),
+    )
+    db_session.add(sub)
+    await db_session.commit()
+    headers = {"Authorization": f"Bearer {tokens.access_token}"}
+    async with client as c:
+        resp = await c.delete(
+            "/notifications/subscription?endpoint=https://fcm/x", headers=headers
+        )
+    assert resp.status_code == 200
+    assert resp.json()["deleted"] == 1
