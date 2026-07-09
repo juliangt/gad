@@ -1,4 +1,5 @@
 # backend/src/gad/admin/service.py
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -29,11 +30,17 @@ async def get_stats(session: AsyncSession) -> dict[str, int]:
 
 
 async def list_reports_admin(
-    session: AsyncSession, *, status: str | None = None
+    session: AsyncSession,
+    *,
+    status: str | None = None,
+    limit: int = 50,
+    before: datetime | None = None,
 ) -> list[Report]:
-    stmt = select(Report).order_by(Report.created_at.desc())
+    stmt = select(Report).order_by(Report.created_at.desc()).limit(limit)
     if status is not None:
         stmt = stmt.where(Report.status == status)
+    if before is not None:
+        stmt = stmt.where(Report.created_at < before)
     result = await session.execute(stmt)
     return list(result.scalars().all())
 

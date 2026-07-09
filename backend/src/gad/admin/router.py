@@ -1,8 +1,9 @@
 # backend/src/gad/admin/router.py
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.admin.dependencies import require_admin
@@ -11,6 +12,7 @@ from gad.admin.service import get_stats, list_reports_admin, update_report_statu
 from gad.db import get_session
 from gad.models.user import User
 from gad.reports.schemas import ReportOut
+from gad.schemas.pagination import PaginatedOut
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -24,14 +26,18 @@ async def stats_endpoint(
     return AdminStatsOut(**stats)
 
 
-@router.get("/reports", response_model=list[ReportOut])
+@router.get("/reports", response_model=PaginatedOut[ReportOut])
 async def list_reports_endpoint(
     admin: Annotated[User, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
     status: str | None = None,
-) -> list[ReportOut]:
-    reports = await list_reports_admin(session, status=status)
-    return [
+    limit: int = Query(default=50, ge=1, le=100),
+    before: datetime | None = Query(default=None),
+) -> PaginatedOut[ReportOut]:
+    reports = await list_reports_admin(
+        session, status=status, limit=limit, before=before
+    )
+    items = [
         ReportOut(
             id=r.id, reporter_id=r.reporter_id, reported_id=r.reported_id,
             reason=r.reason, description=r.description, status=r.status,
@@ -39,6 +45,8 @@ async def list_reports_endpoint(
         )
         for r in reports
     ]
+    next_cursor = items[-1].created_at.isoformat() if len(items) == limit and items else None
+    return PaginatedOut[ReportOut](items=items, next_cursor=next_cursor)
 
 
 @router.patch("/reports/{report_id}", response_model=ReportOut)
