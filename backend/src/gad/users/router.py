@@ -22,6 +22,7 @@ from gad.users.service import (
     get_or_create_preferences,
     get_user_public,
     list_blocks,
+    unblock_user,
     update_preferences,
     update_profile,
     upload_avatar,
@@ -129,3 +130,13 @@ async def list_my_blocks(
 ) -> list[BlockOut]:
     blocks = await list_blocks(session, current_user)
     return [BlockOut(blocked_id=b.blocked_id, created_at=b.created_at) for b in blocks]
+
+
+@router.delete("/me/blocks/{user_id}")
+async def unblock_endpoint(
+    user_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, str]:
+    await unblock_user(session, current_user, user_id)
+    return {"message": "Usuario desbloqueado"}

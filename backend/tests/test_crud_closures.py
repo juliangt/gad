@@ -83,3 +83,29 @@ async def test_patch_plan_updates_title(client, db_session):
         resp = await c.patch(f"/plans/{plan.id}", json={"title": "Editado"}, headers=headers)
     assert resp.status_code == 200
     assert resp.json()["title"] == "Editado"
+
+
+@pytest.mark.asyncio
+async def test_unblock_user(client, db_session):
+    from gad.models.social import Block
+
+    tokens = await register(
+        db_session,
+        RegisterIn(email="b1@example.com", password="12345678", display_name="B1"),
+    )
+    other = await register(
+        db_session,
+        RegisterIn(email="b2@example.com", password="12345678", display_name="B2"),
+    )
+    block = Block(
+        blocker_id=tokens.user_id, blocked_id=other.user_id, created_at=datetime.now(UTC)
+    )
+    db_session.add(block)
+    await db_session.commit()
+    headers = {"Authorization": f"Bearer {tokens.access_token}"}
+    async with client as c:
+        resp = await c.delete(f"/me/blocks/{other.user_id}", headers=headers)
+        assert resp.status_code == 200
+        # Verificar que ya no está
+        resp_list = await c.get("/me/blocks", headers=headers)
+        assert resp_list.json() == []

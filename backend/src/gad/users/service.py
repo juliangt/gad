@@ -89,6 +89,19 @@ async def list_blocks(session: AsyncSession, user: User) -> list[Block]:
     return list(result.scalars().all())
 
 
+async def unblock_user(session: AsyncSession, blocker: User, blocked_id: UUID) -> None:
+    result = await session.execute(
+        select(Block).where(
+            Block.blocker_id == blocker.id, Block.blocked_id == blocked_id
+        )
+    )
+    block = result.scalar_one_or_none()
+    if block is None:
+        raise NotFoundError("Bloqueo no encontrado")
+    await session.delete(block)
+    await session.commit()
+
+
 async def is_blocked_pair(
     session: AsyncSession, user_a_id: UUID, user_b_id: UUID
 ) -> bool:
