@@ -209,3 +209,47 @@ async def test_push_unsubscribe(client, db_session):
         )
     assert resp.status_code == 200
     assert resp.json()["deleted"] == 1
+
+
+@pytest.mark.asyncio
+async def test_revoke_share_link(client, db_session):
+    from gad.models.enums import MatchRole
+    from gad.models.match import Match, MatchParticipant
+
+    tokens = await register(
+        db_session,
+        RegisterIn(email="sl@example.com", password="12345678", display_name="SL"),
+    )
+    plan_id = await _seed_plan(db_session, tokens.user_id)
+    match = Match(
+        plan_id=plan_id,
+        status="active",
+        started_at=datetime.now(UTC),
+        location_sharing_active=False,
+    )
+    db_session.add(match)
+    await db_session.commit()
+    await db_session.refresh(match)
+    db_session.add(
+        MatchParticipant(
+            match_id=match.id,
+            user_id=tokens.user_id,
+            role=MatchRole.host,
+            joined_at=datetime.now(UTC),
+        )
+    )
+    await db_session.commit()
+    headers = {"Authorization": f"Bearer {tokens.access_token}"}
+    async with client as c:
+        # Generar token de share-link
+        resp_gen = await c.post(f"/safety/{match.id}/share-link", headers=headers)
+        assert resp_gen.status_code == 200
+        token = resp_gen.json()["token"]
+        # Revocarlo (token como query param)
+        resp = await c.request(
+            "DELETE",
+            f"/safety/{match.id}/share-link",
+            headers=headers,
+            params={"token": token},
+        )
+    assert resp.status_code == 200

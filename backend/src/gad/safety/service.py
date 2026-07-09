@@ -201,6 +201,29 @@ async def generate_share_link(
     return create_share_link_token(match_id, user.id)
 
 
+async def revoke_share_link(store, token: str) -> None:
+    """Marca el token de share-link como revocado en Redis (denylist).
+
+    El token safety_link no tiene jti propio, así que usamos un sufijo del token
+    como identificador de revocación. Idempotente si el token es inválido/expirado.
+    """
+    from jose import jwt as jose_jwt
+
+    from gad.config import settings
+
+    try:
+        payload = jose_jwt.decode(
+            token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
+        )
+    except Exception:
+        return
+    jti = payload.get("jti") or token[-16:]
+    exp = payload.get("exp", 0)
+    now = int(datetime.now(UTC).timestamp())
+    ttl = max(1, exp - now)
+    await store.revoke_jti(str(payload.get("sub", "")), jti, ttl_seconds=ttl)
+
+
 async def get_public_location(
     session: AsyncSession, token: str
 ) -> dict:
