@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from gad.exceptions import NotFoundError, ValidationError
 from gad.models.match import MatchParticipant, Message
 from gad.models.user import User
+from gad.utils.sanitize import sanitize_text
 
 
 async def _is_participant(session: AsyncSession, match_id: UUID, user_id: UUID) -> bool:
@@ -28,6 +29,10 @@ async def send_message(
 ) -> Message:
     if not await _is_participant(session, match_id, sender.id):
         raise ValidationError("No sos participante de este match")
+
+    content = sanitize_text(content)
+    if not content:
+        raise ValidationError("El mensaje no puede estar vacío")
 
     msg = Message(
         match_id=match_id,
