@@ -27,6 +27,10 @@ class RefreshIn(BaseModel):
     refresh_token: str
 
 
+class LogoutIn(BaseModel):
+    access_token: str
+
+
 class UserPublic(BaseModel):
     id: UUID
     email: EmailStr

@@ -1,18 +1,19 @@
 # backend/src/gad/auth/router.py
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gad.auth.dependencies import get_current_user
+from gad.auth.dependencies import get_current_user, get_token_store
 from gad.auth.oauth import get_google_userinfo
-from gad.auth.service import login, login_or_register_google, refresh_tokens, register
+from gad.auth.service import login, login_or_register_google, logout, refresh_tokens, register
 from gad.db import get_session
 from gad.exceptions import OAuthError
 from gad.middleware.rate_limit import limiter
 from gad.models.user import User
 from gad.schemas.auth import (
     LoginIn,
+    LogoutIn,
     RefreshIn,
     RegisterIn,
     TokenOut,
@@ -60,9 +61,8 @@ async def refresh_endpoint(body: RefreshIn) -> TokenOut:
 
 
 @router.post("/logout")
-async def logout_endpoint(response: Response) -> dict[str, str]:
-    # Stateless: el cliente descarta los tokens. La cookie se limpia.
-    response.delete_cookie("refresh_token")
+async def logout_endpoint(body: LogoutIn) -> dict[str, str]:
+    await logout(get_token_store(), body.access_token)
     return {"message": "Logout OK"}
 
 

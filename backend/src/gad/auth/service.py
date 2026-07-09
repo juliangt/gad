@@ -1,4 +1,5 @@
 # backend/src/gad/auth/service.py
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from gad.auth.jwt import create_access_token, create_refresh_token, decode_token
 from gad.auth.oauth import GoogleUserInfo
 from gad.auth.passwords import hash_password, verify_password
+from gad.auth.token_store import TokenStore
 from gad.config import settings
 from gad.exceptions import (
     EmailAlreadyExistsError,
@@ -104,3 +106,21 @@ def _issue_tokens(user: User) -> TokenOut:
         expires_in=settings.access_token_expire_minutes * 60,
         user_id=user.id,
     )
+
+
+async def logout(store: TokenStore, access_token: str) -> None:
+    """Revoca el access token (y futuros refreshes de esta sesión vía jti).
+
+    No falla si el token ya expiró o es inválido: logout es idempotente.
+    """
+    try:
+        payload = decode_token(access_token)
+    except Exception:
+        return
+    jti = payload.get("jti")
+    user_id = str(payload.get("sub", ""))
+    exp = payload.get("exp", 0)
+    now = int(datetime.now(UTC).timestamp())
+    ttl = max(1, exp - now)
+    if jti and user_id:
+        await store.revoke_jti(user_id, jti, ttl_seconds=ttl)
