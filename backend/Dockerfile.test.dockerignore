@@ -1,0 +1,11 @@
+# Override de .dockerignore para la imagen de tests.
+# NO excluye tests/ (necesario para correr los tests dentro del contenedor).
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.env
