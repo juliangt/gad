@@ -41,7 +41,7 @@ async def test_admin_requires_admin_role(client):
         )
         token = resp.json()["access_token"]
         resp = await c.get("/admin/stats", headers={"Authorization": f"Bearer {token}"})
-    assert resp.status_code == 401
+    assert resp.status_code == 403
 
 
 @pytest.mark.asyncio
