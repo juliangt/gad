@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gad.auth.dependencies import get_current_user
+from gad.auth.dependencies import get_current_user, get_token_store
 from gad.db import get_session
 from gad.models.user import User
 from gad.schemas.block import BlockOut
@@ -18,6 +18,7 @@ from gad.schemas.user import (
 )
 from gad.users.service import (
     block_user,
+    delete_account,
     get_or_create_preferences,
     get_user_public,
     list_blocks,
@@ -54,6 +55,14 @@ async def get_me(
 ) -> UserDetail:
     await get_or_create_preferences(session, current_user)
     return _to_detail(current_user)
+
+
+@router.delete("/me", status_code=204)
+async def delete_me_endpoint(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> None:
+    await delete_account(session, get_token_store(), current_user)
 
 
 @router.patch("/me", response_model=UserDetail)

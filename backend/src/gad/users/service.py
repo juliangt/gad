@@ -118,3 +118,27 @@ async def upload_avatar(session: AsyncSession, user: User, file: UploadFile) -> 
     await session.commit()
     await session.refresh(user)
     return url
+
+
+async def delete_account(session: AsyncSession, store, user: User) -> None:
+    """Soft-delete: marca status=deleted, anonimiza email y limpia credenciales.
+    Conserva el registro para integridad referencial (reviews, matches)."""
+    import uuid
+
+    from gad.config import settings
+    from gad.models.enums import UserStatus
+
+    user.status = UserStatus.deleted
+    user.email = f"deleted:{uuid.uuid4()}@gad.invalid"
+    user.password_hash = None
+    user.password_changed_at = datetime.now(UTC)
+    user.google_id = None
+    user.display_name = "Cuenta eliminada"
+    user.bio = None
+    user.avatar_url = None
+    await session.commit()
+    # Revocar todas las sesiones activas (el status check en get_current_user
+    # también las invalida; esto cubre tokens cacheados).
+    await store.revoke_user(
+        str(user.id), ttl_seconds=settings.refresh_token_expire_days * 86400
+    )
