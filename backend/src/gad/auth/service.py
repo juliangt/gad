@@ -2,6 +2,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,8 +17,11 @@ from gad.exceptions import (
     InvalidCredentialsError,
     InvalidTokenError,
 )
+from gad.middleware.metrics import record_auth_event
 from gad.models.enums import VerificationLevel
 from gad.models.user import User
+
+logger = structlog.get_logger().bind(component="auth")
 from gad.schemas.auth import LoginIn, RegisterIn, TokenOut
 
 
@@ -43,11 +47,23 @@ async def login(session: AsyncSession, data: LoginIn) -> TokenOut:
     result = await session.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
     if user is None or user.password_hash is None:
+        # Hash dummy para mitigar timing attacks (no filtrar si el email existe).
+        verify_password(data.password, _DUMMY_HASH)
+        logger.warning("login_failed", email=data.email)
+        record_auth_event("login", "failed")
         raise InvalidCredentialsError("Credenciales inválidas")
     if not verify_password(data.password, user.password_hash):
+        logger.warning("login_failed", email=data.email)
+        record_auth_event("login", "failed")
         raise InvalidCredentialsError("Credenciales inválidas")
 
+    logger.info("login_ok", user_id=str(user.id))
+    record_auth_event("login", "ok")
     return _issue_tokens(user)
+
+
+# Hash fijo para comparar en el path de usuario inexistente (timing-safe).
+_DUMMY_HASH = hash_password("timing-safe-dummy")
 
 
 async def login_or_register_google(
