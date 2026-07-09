@@ -20,9 +20,9 @@ from gad.exceptions import (
 from gad.middleware.metrics import record_auth_event
 from gad.models.enums import VerificationLevel
 from gad.models.user import User
+from gad.schemas.auth import LoginIn, RegisterIn, TokenOut
 
 logger = structlog.get_logger().bind(component="auth")
-from gad.schemas.auth import LoginIn, RegisterIn, TokenOut
 
 
 async def register(session: AsyncSession, data: RegisterIn) -> TokenOut:

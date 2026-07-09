@@ -48,6 +48,7 @@ def test_sanitize_text_collapses_whitespace():
 import time  # noqa: E402
 
 from gad.auth.service import login  # noqa: E402
+from gad.exceptions import InvalidCredentialsError  # noqa: E402
 from gad.schemas.auth import LoginIn  # noqa: E402
 
 
@@ -59,7 +60,7 @@ async def test_login_timing_runs_dummy_hash_for_unknown_user(db_session):
     distinta y que consume tiempo (el verify_password dummy corre).
     """
     t1 = time.perf_counter()
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidCredentialsError):
         await login(db_session, LoginIn(email="nope@nope.com", password="12345678"))
     elapsed = time.perf_counter() - t1
     # verify_password (argon2) toma del orden de decenas de ms; si el dummy

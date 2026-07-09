@@ -63,6 +63,9 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+# B008: FastAPI usa Query/Depends/Header en defaults de parámetros por diseño
+# (inyección de dependencias); es el patrón idiomático, no un bug.
+ignore = ["B008"]
 
 [tool.mypy]
 python_version = "3.12"

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from fastapi import FastAPI, Request
@@ -29,7 +29,7 @@ def test_paginated_out_with_items_and_cursor():
 
 
 def test_paginated_out_serializes_cursor_as_iso():
-    ts = datetime(2026, 7, 8, 12, 0, tzinfo=timezone.utc)
+    ts = datetime(2026, 7, 8, 12, 0, tzinfo=UTC)
     out = PaginatedOut[dict](items=[{"a": 1}], next_cursor=ts.isoformat())
     dumped = out.model_dump()
     assert dumped["next_cursor"] == ts.isoformat()

@@ -66,8 +66,6 @@ async def _make_admin(db_session, user_id):
 
 @pytest.mark.asyncio
 async def test_admin_bans_user_and_revokes_token(client, db_session):
-    from gad.models.user import User
-    from sqlalchemy import update
 
     admin_tokens = await register(
         db_session,

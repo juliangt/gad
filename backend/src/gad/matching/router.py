@@ -17,7 +17,6 @@ from gad.matching.schemas import (
     MatchOut,
     ParticipantOut,
 )
-from gad.schemas.pagination import PaginatedOut
 from gad.matching.service import (
     accept_application,
     apply_to_plan,
@@ -33,6 +32,7 @@ from gad.matching.service import (
 from gad.models.match import MatchParticipant
 from gad.models.plan import PlanApplication
 from gad.models.user import User
+from gad.schemas.pagination import PaginatedOut
 
 router = APIRouter(tags=["matching"])
 
