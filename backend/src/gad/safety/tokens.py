@@ -9,7 +9,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError
 
 from gad.config import settings
 
@@ -41,11 +42,11 @@ def decode_share_link_token(token: str) -> LinkPayload:
         payload: dict[str, Any] = jwt.decode(
             token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
         )
-    except JWTError as e:
-        raise JWTError(f"Link inválido: {e}") from e
+    except PyJWTError as e:
+        raise PyJWTError(f"Link inválido: {e}") from e
 
     if payload.get("type") != "safety_link":
-        raise JWTError("Token no es safety_link")
+        raise PyJWTError("Token no es safety_link")
 
     return LinkPayload(
         match_id=payload["match_id"],
