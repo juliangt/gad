@@ -57,8 +57,11 @@ async def login_endpoint(
 
 
 @router.post("/oauth/google", response_model=TokenOut)
+@limiter.limit("5/minute")
 async def oauth_google_endpoint(
-    body: RefreshIn, session: Annotated[AsyncSession, Depends(get_session)]
+    request: Request,
+    body: RefreshIn,
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> TokenOut:
     """`body.refresh_token` transporta el código de autorización de Google."""
     try:
@@ -69,7 +72,8 @@ async def oauth_google_endpoint(
 
 
 @router.post("/refresh", response_model=TokenOut)
-async def refresh_endpoint(body: RefreshIn) -> TokenOut:
+@limiter.limit("30/minute")
+async def refresh_endpoint(request: Request, body: RefreshIn) -> TokenOut:
     return await refresh_tokens(body.refresh_token)
 
 
