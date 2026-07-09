@@ -115,6 +115,19 @@ async def is_blocked_pair(
     return result.scalar_one_or_none() is not None
 
 
+async def set_user_status(session: AsyncSession, user_id: UUID, status) -> User:
+    from gad.models.enums import UserStatus
+
+    result = await session.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise NotFoundError("Usuario no encontrado")
+    user.status = UserStatus(status)
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
 async def upload_avatar(session: AsyncSession, user: User, file: UploadFile) -> str:
     """Redimensiona a 512x512, guarda y actualiza user.avatar_url."""
     raw = await file.read()
