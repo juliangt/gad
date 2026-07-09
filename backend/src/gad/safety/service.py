@@ -2,6 +2,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
+import structlog
 from geoalchemy2 import Geometry
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import cast, func, select
@@ -15,6 +16,8 @@ from gad.models.user import User
 from gad.notifications.service import create_notification
 from gad.safety.schemas import TrustedContactIn
 from gad.safety.tokens import create_share_link_token, decode_share_link_token
+
+logger = structlog.get_logger().bind(component="safety")
 
 MAX_TRUSTED_CONTACTS = 2
 
@@ -187,6 +190,7 @@ async def trigger_sos(
             {"type": "sos", "match_id": str(match_id), "from": str(user.id)},
         )
 
+    logger.warning("sos_triggered", user_id=str(user.id), match_id=str(match_id))
     return event
 
 
