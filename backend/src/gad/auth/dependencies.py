@@ -61,5 +61,13 @@ async def get_current_user(
         raise AuthError("Usuario no encontrado")
     if user.status != UserStatus.active:
         raise AuthError("Cuenta no activa")
+    # Si la password cambió después de emitir este token, invalidarlo.
+    iat = payload.get("iat")
+    if (
+        user.password_changed_at is not None
+        and iat is not None
+        and iat < user.password_changed_at.timestamp()
+    ):
+        raise InvalidTokenError("Token emitido antes del último cambio de contraseña")
 
     return user

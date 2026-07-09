@@ -124,3 +124,22 @@ async def logout(store: TokenStore, access_token: str) -> None:
     ttl = max(1, exp - now)
     if jti and user_id:
         await store.revoke_jti(user_id, jti, ttl_seconds=ttl)
+
+
+async def change_password(
+    session: AsyncSession,
+    store: TokenStore,
+    user: User,
+    old_password: str,
+    new_password: str,
+) -> None:
+    if user.password_hash is None or not verify_password(old_password, user.password_hash):
+        raise InvalidCredentialsError("Contraseña actual incorrecta")
+    user.password_hash = hash_password(new_password)
+    user.password_changed_at = datetime.now(UTC)
+    await session.commit()
+    # Revocación por timestamp (password_changed_at) invalida tokens previos;
+    # revoke_user además invalida jtis trackeados en Redis (best-effort).
+    await store.revoke_user(
+        str(user.id), ttl_seconds=settings.refresh_token_expire_days * 86400
+    )

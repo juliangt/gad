@@ -31,6 +31,11 @@ class LogoutIn(BaseModel):
     access_token: str
 
 
+class ChangePasswordIn(BaseModel):
+    old_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class UserPublic(BaseModel):
     id: UUID
     email: EmailStr

@@ -51,6 +51,9 @@ class User(Base, TimestampMixin):
     last_active_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    password_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     preferences: Mapped["UserPreferences"] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan"

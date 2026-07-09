@@ -6,12 +6,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.auth.dependencies import get_current_user, get_token_store
 from gad.auth.oauth import get_google_userinfo
-from gad.auth.service import login, login_or_register_google, logout, refresh_tokens, register
+from gad.auth.service import (
+    change_password,
+    login,
+    login_or_register_google,
+    logout,
+    refresh_tokens,
+    register,
+)
 from gad.db import get_session
 from gad.exceptions import OAuthError
 from gad.middleware.rate_limit import limiter
 from gad.models.user import User
 from gad.schemas.auth import (
+    ChangePasswordIn,
     LoginIn,
     LogoutIn,
     RefreshIn,
@@ -64,6 +72,18 @@ async def refresh_endpoint(body: RefreshIn) -> TokenOut:
 async def logout_endpoint(body: LogoutIn) -> dict[str, str]:
     await logout(get_token_store(), body.access_token)
     return {"message": "Logout OK"}
+
+
+@router.post("/change-password")
+async def change_password_endpoint(
+    data: ChangePasswordIn,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, str]:
+    await change_password(
+        session, get_token_store(), current_user, data.old_password, data.new_password
+    )
+    return {"message": "Contraseña actualizada"}
 
 
 @router.get("/me", response_model=UserPublic)
