@@ -13,6 +13,7 @@ from gad.exceptions import GADError
 from gad.models.enums import NotificationType
 from gad.notifications.router import router as notif_router
 from gad.notifications.service import create_notification
+from gad.reviews.router import router as reviews_router
 from gad.schemas.auth import RegisterIn
 from gad.schemas.pagination import PaginatedOut
 
@@ -55,6 +56,7 @@ def app(db_engine):
     app.dependency_overrides[get_session] = _session
     app.include_router(auth_router)
     app.include_router(notif_router)
+    app.include_router(reviews_router)
     return app
 
 
@@ -89,4 +91,20 @@ async def test_notifications_pagination_returns_cursor(client, db_session):
         )
         body2 = resp2.json()
         assert len(body2["items"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_reviews_pagination_returns_cursor(client, db_session):
+    tokens = await register(
+        db_session,
+        RegisterIn(email="r@example.com", password="12345678", display_name="R"),
+    )
+    headers = {"Authorization": f"Bearer {tokens.access_token}"}
+    async with client as c:
+        resp = await c.get(f"/reviews?user_id={tokens.user_id}&limit=10", headers=headers)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "items" in body
+    assert "next_cursor" in body
+
 

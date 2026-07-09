@@ -1,8 +1,9 @@
 # backend/src/gad/reviews/router.py
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +13,7 @@ from gad.middleware.rate_limit import limiter
 from gad.models.user import User
 from gad.reviews.schemas import ReviewerSummary, ReviewIn, ReviewOut, ReviewWithReviewer
 from gad.reviews.service import create_review, list_reviews_for_user
+from gad.schemas.pagination import PaginatedOut
 
 router = APIRouter(tags=["reviews"])
 
@@ -32,13 +34,15 @@ async def create_review_endpoint(
     )
 
 
-@router.get("/reviews", response_model=list[ReviewWithReviewer])
+@router.get("/reviews", response_model=PaginatedOut[ReviewWithReviewer])
 async def list_reviews_endpoint(
     user_id: UUID,
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> list[ReviewWithReviewer]:
-    reviews = await list_reviews_for_user(session, user_id)
+    limit: int = Query(default=50, ge=1, le=100),
+    before: datetime | None = Query(default=None),
+) -> PaginatedOut[ReviewWithReviewer]:
+    reviews = await list_reviews_for_user(session, user_id, limit=limit, before=before)
     out = []
     for r in reviews:
         reviewer = (
@@ -57,4 +61,5 @@ async def list_reviews_endpoint(
                 ),
             )
         )
-    return out
+    next_cursor = out[-1].created_at.isoformat() if len(out) == limit and out else None
+    return PaginatedOut[ReviewWithReviewer](items=out, next_cursor=next_cursor)

@@ -102,12 +102,19 @@ async def recalc_reputation(session: AsyncSession, user_id: UUID) -> float:
 
 
 async def list_reviews_for_user(
-    session: AsyncSession, user_id: UUID, *, limit: int = 50
+    session: AsyncSession,
+    user_id: UUID,
+    *,
+    limit: int = 50,
+    before: datetime | None = None,
 ) -> list[Review]:
-    result = await session.execute(
+    stmt = (
         select(Review)
         .where(Review.reviewee_id == user_id)
         .order_by(Review.created_at.desc())
         .limit(limit)
     )
+    if before is not None:
+        stmt = stmt.where(Review.created_at < before)
+    result = await session.execute(stmt)
     return list(result.scalars().all())
