@@ -3,6 +3,8 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
+from gad.config import settings
+
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(
@@ -13,6 +15,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "geolocation=(self)"
+        response.headers["Content-Security-Policy"] = settings.csp_policy
         if request.url.scheme == "https":
             response.headers["Strict-Transport-Security"] = (
                 "max-age=63072000; includeSubDomains; preload"

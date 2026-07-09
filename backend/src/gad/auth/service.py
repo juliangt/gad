@@ -1,21 +1,28 @@
 # backend/src/gad/auth/service.py
+from datetime import UTC, datetime
 from uuid import UUID
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.auth.jwt import create_access_token, create_refresh_token, decode_token
 from gad.auth.oauth import GoogleUserInfo
+from gad.auth.password_reset import PasswordResetStore
 from gad.auth.passwords import hash_password, verify_password
+from gad.auth.token_store import TokenStore
 from gad.config import settings
 from gad.exceptions import (
     EmailAlreadyExistsError,
     InvalidCredentialsError,
     InvalidTokenError,
 )
+from gad.middleware.metrics import record_auth_event
 from gad.models.enums import VerificationLevel
 from gad.models.user import User
 from gad.schemas.auth import LoginIn, RegisterIn, TokenOut
+
+logger = structlog.get_logger().bind(component="auth")
 
 
 async def register(session: AsyncSession, data: RegisterIn) -> TokenOut:
@@ -40,11 +47,23 @@ async def login(session: AsyncSession, data: LoginIn) -> TokenOut:
     result = await session.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
     if user is None or user.password_hash is None:
+        # Hash dummy para mitigar timing attacks (no filtrar si el email existe).
+        verify_password(data.password, _DUMMY_HASH)
+        logger.warning("login_failed", email=data.email)
+        record_auth_event("login", "failed")
         raise InvalidCredentialsError("Credenciales inválidas")
     if not verify_password(data.password, user.password_hash):
+        logger.warning("login_failed", email=data.email)
+        record_auth_event("login", "failed")
         raise InvalidCredentialsError("Credenciales inválidas")
 
+    logger.info("login_ok", user_id=str(user.id))
+    record_auth_event("login", "ok")
     return _issue_tokens(user)
+
+
+# Hash fijo para comparar en el path de usuario inexistente (timing-safe).
+_DUMMY_HASH = hash_password("timing-safe-dummy")
 
 
 async def login_or_register_google(
@@ -103,4 +122,76 @@ def _issue_tokens(user: User) -> TokenOut:
         refresh_token=refresh,
         expires_in=settings.access_token_expire_minutes * 60,
         user_id=user.id,
+    )
+
+
+async def logout(store: TokenStore, access_token: str) -> None:
+    """Revoca el access token (y futuros refreshes de esta sesión vía jti).
+
+    No falla si el token ya expiró o es inválido: logout es idempotente.
+    """
+    try:
+        payload = decode_token(access_token)
+    except Exception:
+        return
+    jti = payload.get("jti")
+    user_id = str(payload.get("sub", ""))
+    exp = payload.get("exp", 0)
+    now = int(datetime.now(UTC).timestamp())
+    ttl = max(1, exp - now)
+    if jti and user_id:
+        await store.revoke_jti(user_id, jti, ttl_seconds=ttl)
+
+
+async def change_password(
+    session: AsyncSession,
+    store: TokenStore,
+    user: User,
+    old_password: str,
+    new_password: str,
+) -> None:
+    if user.password_hash is None or not verify_password(old_password, user.password_hash):
+        raise InvalidCredentialsError("Contraseña actual incorrecta")
+    user.password_hash = hash_password(new_password)
+    user.password_changed_at = datetime.now(UTC)
+    await session.commit()
+    # Revocación por timestamp (password_changed_at) invalida tokens previos;
+    # revoke_user además invalida jtis trackeados en Redis (best-effort).
+    await store.revoke_user(
+        str(user.id), ttl_seconds=settings.refresh_token_expire_days * 86400
+    )
+
+
+async def request_password_reset(
+    session: AsyncSession, store: PasswordResetStore, email: str
+) -> None:
+    """Genera un token si el usuario existe. No revela si el email existe."""
+    result = await session.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if user is None or user.password_hash is None:
+        return  # No-op silencioso
+    await store.issue(email)
+    # En producción: enviar email con el token. Aquí sólo se persiste.
+    # TODO(email): integrar con un servicio de email real (fuera de scope MVP).
+
+
+async def confirm_password_reset(
+    session: AsyncSession,
+    reset_store: PasswordResetStore,
+    token_store: TokenStore,
+    email: str,
+    token: str,
+    new_password: str,
+) -> None:
+    if not await reset_store.validate_and_consume(email, token):
+        raise InvalidTokenError("Token de reset inválido o expirado")
+    result = await session.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise InvalidCredentialsError("Credenciales inválidas")
+    user.password_hash = hash_password(new_password)
+    user.password_changed_at = datetime.now(UTC)
+    await session.commit()
+    await token_store.revoke_user(
+        str(user.id), ttl_seconds=settings.refresh_token_expire_days * 86400
     )

@@ -13,8 +13,14 @@ from gad.exceptions import NotFoundError
 from gad.middleware.rate_limit import limiter
 from gad.models.plan import Plan
 from gad.models.user import User
-from gad.plans.schemas import HostSummary, PlanIn, PlanListItem, PlanOut
-from gad.plans.service import cancel_plan, create_plan, get_plan, list_nearby_plans
+from gad.plans.schemas import HostSummary, PlanIn, PlanListItem, PlanOut, PlanUpdateIn
+from gad.plans.service import (
+    cancel_plan,
+    create_plan,
+    get_plan,
+    list_nearby_plans,
+    update_plan,
+)
 
 router = APIRouter(prefix="/plans", tags=["plans"])
 
@@ -105,6 +111,20 @@ async def get_plan_endpoint(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> PlanOut:
     plan = await get_plan(session, plan_id)
+    return await _plan_to_out(session, plan)
+
+
+@router.patch("/{plan_id}", response_model=PlanOut)
+async def update_plan_endpoint(
+    plan_id: UUID,
+    data: PlanUpdateIn,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> PlanOut:
+    plan = await get_plan(session, plan_id)
+    if plan.host_id != current_user.id:
+        raise NotFoundError("Plan no encontrado")
+    plan = await update_plan(session, plan, data)
     return await _plan_to_out(session, plan)
 
 

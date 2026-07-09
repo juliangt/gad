@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.auth.dependencies import get_current_user
 from gad.chat.schemas import MessageOut
-from gad.chat.service import get_history, mark_read
+from gad.chat.service import delete_message, get_history, mark_read
 from gad.db import get_session
 from gad.models.user import User
 
@@ -47,3 +47,13 @@ async def mark_read_endpoint(
 ) -> dict[str, int]:
     count = await mark_read(session, current_user, match_id)
     return {"read": count}
+
+
+@router.delete("/messages/{message_id}")
+async def delete_message_endpoint(
+    message_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, str]:
+    await delete_message(session, current_user, message_id)
+    return {"message": "Mensaje borrado"}

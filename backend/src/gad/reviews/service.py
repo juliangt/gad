@@ -102,12 +102,34 @@ async def recalc_reputation(session: AsyncSession, user_id: UUID) -> float:
 
 
 async def list_reviews_for_user(
-    session: AsyncSession, user_id: UUID, *, limit: int = 50
+    session: AsyncSession,
+    user_id: UUID,
+    *,
+    limit: int = 50,
+    before: datetime | None = None,
 ) -> list[Review]:
-    result = await session.execute(
+    stmt = (
         select(Review)
         .where(Review.reviewee_id == user_id)
         .order_by(Review.created_at.desc())
         .limit(limit)
     )
+    if before is not None:
+        stmt = stmt.where(Review.created_at < before)
+    result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def delete_review(session: AsyncSession, reviewer: User, review_id: UUID) -> UUID:
+    result = await session.execute(select(Review).where(Review.id == review_id))
+    review = result.scalar_one_or_none()
+    if review is None:
+        raise NotFoundError("Reseña no encontrada")
+    if review.reviewer_id != reviewer.id:
+        raise ValidationError("Solo podés borrar tus propias reseñas")
+    reviewee_id = review.reviewee_id
+    await session.delete(review)
+    await session.commit()
+    # Recalcular reputación del reviewee tras el borrado
+    await recalc_reputation(session, reviewee_id)
+    return reviewee_id

@@ -5,9 +5,10 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gad.exceptions import ValidationError
+from gad.exceptions import NotFoundError, ValidationError
 from gad.models.match import MatchParticipant, Message
 from gad.models.user import User
+from gad.utils.sanitize import sanitize_text
 
 
 async def _is_participant(session: AsyncSession, match_id: UUID, user_id: UUID) -> bool:
@@ -28,6 +29,10 @@ async def send_message(
 ) -> Message:
     if not await _is_participant(session, match_id, sender.id):
         raise ValidationError("No sos participante de este match")
+
+    content = sanitize_text(content)
+    if not content:
+        raise ValidationError("El mensaje no puede estar vacío")
 
     msg = Message(
         match_id=match_id,
@@ -98,3 +103,14 @@ async def get_unread_count(
         )
     )
     return result.scalar_one()
+
+
+async def delete_message(session: AsyncSession, user: User, message_id: UUID) -> None:
+    result = await session.execute(select(Message).where(Message.id == message_id))
+    msg = result.scalar_one_or_none()
+    if msg is None:
+        raise NotFoundError("Mensaje no encontrado")
+    if msg.sender_id != user.id:
+        raise ValidationError("Solo podés borrar tus propios mensajes")
+    await session.delete(msg)
+    await session.commit()

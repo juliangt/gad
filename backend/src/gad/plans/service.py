@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.availability.alerts import notify_matching_users
 from gad.availability.matcher import find_matching_availability
-from gad.exceptions import NotFoundError
+from gad.exceptions import ConflictError, NotFoundError
 from gad.models.enums import ActivityType, PlanMode, PlanStatus
 from gad.models.geo import snap_to_grid
 from gad.models.plan import Plan
@@ -69,6 +69,20 @@ async def cancel_plan(session: AsyncSession, plan: Plan) -> Plan:
     plan.status = PlanStatus.cancelled
     await session.commit()
     await session.refresh(plan)
+    return plan
+
+
+async def update_plan(session: AsyncSession, plan: Plan, data) -> Plan:
+    if plan.status != PlanStatus.open:
+        raise ConflictError("Solo se pueden editar planes abiertos")
+    changed = False
+    for field, value in data.model_dump(exclude_unset=True).items():
+        if value is not None:
+            setattr(plan, field, value)
+            changed = True
+    if changed:
+        await session.commit()
+        await session.refresh(plan)
     return plan
 
 

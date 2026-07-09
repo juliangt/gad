@@ -31,6 +31,12 @@ class PlanIn(BaseModel):
         return self
 
 
+class PlanUpdateIn(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=2000)
+    scheduled_at: datetime | None = None
+
+
 class HostSummary(BaseModel):
     id: UUID
     display_name: str

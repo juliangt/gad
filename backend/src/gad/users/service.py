@@ -89,6 +89,19 @@ async def list_blocks(session: AsyncSession, user: User) -> list[Block]:
     return list(result.scalars().all())
 
 
+async def unblock_user(session: AsyncSession, blocker: User, blocked_id: UUID) -> None:
+    result = await session.execute(
+        select(Block).where(
+            Block.blocker_id == blocker.id, Block.blocked_id == blocked_id
+        )
+    )
+    block = result.scalar_one_or_none()
+    if block is None:
+        raise NotFoundError("Bloqueo no encontrado")
+    await session.delete(block)
+    await session.commit()
+
+
 async def is_blocked_pair(
     session: AsyncSession, user_a_id: UUID, user_b_id: UUID
 ) -> bool:
@@ -100,6 +113,19 @@ async def is_blocked_pair(
         )
     )
     return result.scalar_one_or_none() is not None
+
+
+async def set_user_status(session: AsyncSession, user_id: UUID, status) -> User:
+    from gad.models.enums import UserStatus
+
+    result = await session.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise NotFoundError("Usuario no encontrado")
+    user.status = UserStatus(status)
+    await session.commit()
+    await session.refresh(user)
+    return user
 
 
 async def upload_avatar(session: AsyncSession, user: User, file: UploadFile) -> str:
@@ -118,3 +144,27 @@ async def upload_avatar(session: AsyncSession, user: User, file: UploadFile) -> 
     await session.commit()
     await session.refresh(user)
     return url
+
+
+async def delete_account(session: AsyncSession, store, user: User) -> None:
+    """Soft-delete: marca status=deleted, anonimiza email y limpia credenciales.
+    Conserva el registro para integridad referencial (reviews, matches)."""
+    import uuid
+
+    from gad.config import settings
+    from gad.models.enums import UserStatus
+
+    user.status = UserStatus.deleted
+    user.email = f"deleted:{uuid.uuid4()}@gad.invalid"
+    user.password_hash = None
+    user.password_changed_at = datetime.now(UTC)
+    user.google_id = None
+    user.display_name = "Cuenta eliminada"
+    user.bio = None
+    user.avatar_url = None
+    await session.commit()
+    # Revocar todas las sesiones activas (el status check en get_current_user
+    # también las invalida; esto cubre tokens cacheados).
+    await store.revoke_user(
+        str(user.id), ttl_seconds=settings.refresh_token_expire_days * 86400
+    )

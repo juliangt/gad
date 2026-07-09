@@ -40,6 +40,13 @@ def redis_container():
         yield r
 
 
+@pytest.fixture(scope="session")
+def _redis_url(redis_container) -> str:
+    host = redis_container.get_container_host_ip()
+    port = redis_container.get_exposed_port(6379)
+    return f"redis://{host}:{port}/0"
+
+
 @pytest_asyncio.fixture
 async def db_engine(pg_container) -> AsyncGenerator:
     url = pg_container.get_connection_url()
@@ -63,10 +70,36 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
-async def redis_client(redis_container) -> AsyncGenerator[Redis, None]:
-    host = redis_container.get_container_host_ip()
-    port = redis_container.get_exposed_port(6379)
-    client = Redis.from_url(f"redis://{host}:{port}/0")
+async def redis_client(_redis_url) -> AsyncGenerator[Redis, None]:
+    """Cliente Redis dedicado por test (para tests que manipulan Redis directo)."""
+    client = Redis.from_url(_redis_url)
     yield client
     await client.flushdb()
     await client.aclose()
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _auth_redis(_redis_url) -> AsyncGenerator[None, None]:
+    """Provee stores de Redis funcionales (TokenStore + PasswordResetStore) a
+    los endpoints autenticados para todos los tests.
+
+    Como get_current_user ahora valida jti revocado contra Redis y el reset de
+    password persiste tokens en Redis, cualquier test que use esos endpoints
+    necesita stores apuntando al Redis de testcontainers. Este fixture autouse
+    los setea globalmente y limpia entre tests.
+    """
+    import gad.auth.dependencies as deps
+    import gad.auth.password_reset as pr
+    from gad.auth.password_reset import PasswordResetStore
+    from gad.auth.token_store import TokenStore
+
+    client = Redis.from_url(_redis_url)
+    deps._token_store = TokenStore(client)
+    pr._store = PasswordResetStore(client)
+    try:
+        yield
+    finally:
+        deps._token_store = None
+        pr._store = None
+        await client.flushdb()
+        await client.aclose()

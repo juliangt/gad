@@ -12,6 +12,7 @@ from gad.models.enums import (
     Gender,
     GenderPreference,
     GroupSizePreference,
+    UserStatus,
     VerificationLevel,
 )
 
@@ -41,7 +42,16 @@ class User(Base, TimestampMixin):
         default=VerificationLevel.none,
     )
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    status: Mapped[UserStatus] = mapped_column(
+        Enum(UserStatus, name="userstatus"),
+        nullable=False,
+        default=UserStatus.active,
+        server_default="active",
+    )
     last_active_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    password_changed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 

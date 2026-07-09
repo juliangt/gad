@@ -33,3 +33,19 @@ NO_BUILD=1 ./run-tests-docker.sh
 El script construye `Dockerfile.test` (imagen con dependencias de desarrollo y
 la carpeta `tests/`) y ejecuta pytest en un contenedor con acceso al socket de
 Docker, para que testcontainers pueda levantar los contenedores hermanos.
+
+## Gestión de admin
+
+Para otorgar permisos de admin a un usuario existente:
+
+```bash
+cd backend
+uv run python -m scripts.make_admin user@example.com
+```
+
+Para revocar:
+
+```bash
+uv run python -m scripts.make_admin user@example.com --revoke
+```
+

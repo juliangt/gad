@@ -2,6 +2,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
+import structlog
 from geoalchemy2 import Geometry
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import cast, func, select
@@ -15,6 +16,8 @@ from gad.models.user import User
 from gad.notifications.service import create_notification
 from gad.safety.schemas import TrustedContactIn
 from gad.safety.tokens import create_share_link_token, decode_share_link_token
+
+logger = structlog.get_logger().bind(component="safety")
 
 MAX_TRUSTED_CONTACTS = 2
 
@@ -187,6 +190,7 @@ async def trigger_sos(
             {"type": "sos", "match_id": str(match_id), "from": str(user.id)},
         )
 
+    logger.warning("sos_triggered", user_id=str(user.id), match_id=str(match_id))
     return event
 
 
@@ -195,6 +199,29 @@ async def generate_share_link(
 ) -> str:
     await _verify_participant(session, match_id, user.id)
     return create_share_link_token(match_id, user.id)
+
+
+async def revoke_share_link(store, token: str) -> None:
+    """Marca el token de share-link como revocado en Redis (denylist).
+
+    El token safety_link no tiene jti propio, así que usamos un sufijo del token
+    como identificador de revocación. Idempotente si el token es inválido/expirado.
+    """
+    from jose import jwt as jose_jwt
+
+    from gad.config import settings
+
+    try:
+        payload = jose_jwt.decode(
+            token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
+        )
+    except Exception:
+        return
+    jti = payload.get("jti") or token[-16:]
+    exp = payload.get("exp", 0)
+    now = int(datetime.now(UTC).timestamp())
+    ttl = max(1, exp - now)
+    await store.revoke_jti(str(payload.get("sub", "")), jti, ttl_seconds=ttl)
 
 
 async def get_public_location(

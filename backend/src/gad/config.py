@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
+    password_reset_token_expire_minutes: int = 30
 
     # OAuth Google
     google_client_id: str = ""
@@ -35,6 +36,9 @@ class Settings(BaseSettings):
 
     # Rate limit
     rate_limit_enabled: bool = True
+
+    # Security headers
+    csp_policy: str = "default-src 'self'; frame-ancestors 'none'; base-uri 'none'"
 
     @field_validator("cors_origins", mode="before")
     @classmethod

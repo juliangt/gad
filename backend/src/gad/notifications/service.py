@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.models.enums import NotificationType
@@ -30,7 +30,12 @@ async def create_notification(
 
 
 async def list_notifications(
-    session: AsyncSession, user_id: UUID, *, unread_only: bool = False, limit: int = 50
+    session: AsyncSession,
+    user_id: UUID,
+    *,
+    unread_only: bool = False,
+    limit: int = 50,
+    before: datetime | None = None,
 ) -> list[Notification]:
     stmt = (
         select(Notification)
@@ -40,6 +45,8 @@ async def list_notifications(
     )
     if unread_only:
         stmt = stmt.where(Notification.read_at.is_(None))
+    if before is not None:
+        stmt = stmt.where(Notification.created_at < before)
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
@@ -66,3 +73,24 @@ async def unread_count(session: AsyncSession, user_id: UUID) -> int:
         )
     )
     return result.scalar_one()
+
+
+async def mark_all_read(session: AsyncSession, user_id: UUID) -> int:
+    result = await session.execute(
+        update(Notification)
+        .where(
+            Notification.user_id == user_id,
+            Notification.read_at.is_(None),
+        )
+        .values(read_at=datetime.now(UTC))
+    )
+    await session.commit()
+    return result.rowcount
+
+
+async def delete_all(session: AsyncSession, user_id: UUID) -> int:
+    result = await session.execute(
+        delete(Notification).where(Notification.user_id == user_id)
+    )
+    await session.commit()
+    return result.rowcount

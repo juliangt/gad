@@ -8,9 +8,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from gad.auth.jwt import decode_token
+from gad.auth.token_store import TokenStore
 from gad.db import get_session
 from gad.exceptions import AuthError, InvalidTokenError
+from gad.models.enums import UserStatus
 from gad.models.user import User
+
+# Inicializado perezosamente; los tests pueden sobreescribir `_token_store`.
+_token_store: TokenStore | None = None
+
+
+def get_token_store() -> TokenStore:
+    global _token_store
+    if _token_store is None:
+        from gad.redis_client import redis_client
+
+        _token_store = TokenStore(redis_client)
+    return _token_store
 
 
 async def get_current_user(
@@ -29,6 +43,11 @@ async def get_current_user(
     if payload.get("type") != "access":
         raise InvalidTokenError("Token no es de tipo access")
 
+    jti = payload.get("jti")
+    store = get_token_store()
+    if jti is not None and await store.is_revoked(jti):
+        raise InvalidTokenError("Token revocado")
+
     try:
         user_id = UUID(payload["sub"])
     except (KeyError, ValueError) as e:
@@ -40,5 +59,17 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if user is None:
         raise AuthError("Usuario no encontrado")
+    if user.status != UserStatus.active:
+        raise AuthError("Cuenta no activa")
+    # Si la password cambió después de emitir este token, invalidarlo.
+    # iat tiene resolución sub-segundo, igual que password_changed_at, así la
+    # comparación es exacta: un login posterior al cambio siempre es válido.
+    iat = payload.get("iat")
+    if (
+        user.password_changed_at is not None
+        and iat is not None
+        and iat < user.password_changed_at.timestamp()
+    ):
+        raise InvalidTokenError("Token emitido antes del último cambio de contraseña")
 
     return user

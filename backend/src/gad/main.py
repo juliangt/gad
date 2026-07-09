@@ -17,6 +17,8 @@ from gad.health import router as health_router
 from gad.jobs.scheduler import shutdown_scheduler, start_scheduler
 from gad.logging_setup import setup_logging
 from gad.matching.router import router as matching_router
+from gad.middleware.metrics import metrics_router
+from gad.middleware.request_logging import RequestLoggingMiddleware
 from gad.middleware.security_headers import SecurityHeadersMiddleware
 from gad.notifications.push_router import router as push_router
 from gad.notifications.router import router as notifications_router
@@ -66,6 +68,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(RequestLoggingMiddleware)
 
     @app.exception_handler(GADError)
     async def gad_error_handler(request: Request, exc: GADError) -> JSONResponse:
@@ -75,6 +78,7 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(health_router)
+    app.include_router(metrics_router)
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(plans_router)

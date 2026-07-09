@@ -91,6 +91,6 @@ async def test_full_apply_accept_flow(client):
 
         # Ambos ven el match
         resp = await c.get("/matches", headers={"Authorization": f"Bearer {host_token}"})
-        assert len(resp.json()) == 1
+        assert len(resp.json()["items"]) == 1
         resp = await c.get("/matches", headers={"Authorization": f"Bearer {app_token}"})
-        assert len(resp.json()) == 1
+        assert len(resp.json()["items"]) == 1

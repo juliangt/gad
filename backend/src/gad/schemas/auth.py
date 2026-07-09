@@ -27,6 +27,24 @@ class RefreshIn(BaseModel):
     refresh_token: str
 
 
+class LogoutIn(BaseModel):
+    access_token: str
+
+
+class ChangePasswordIn(BaseModel):
+    old_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class PasswordResetRequestIn(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirmIn(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class UserPublic(BaseModel):
     id: UUID
     email: EmailStr

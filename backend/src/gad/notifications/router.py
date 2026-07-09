@@ -1,4 +1,5 @@
 # backend/src/gad/notifications/router.py
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -9,19 +10,36 @@ from gad.auth.dependencies import get_current_user
 from gad.db import get_session
 from gad.models.user import User
 from gad.notifications.schemas import NotificationOut
-from gad.notifications.service import list_notifications, mark_read, unread_count
+from gad.notifications.service import (
+    delete_all,
+    list_notifications,
+    mark_all_read,
+    mark_read,
+    unread_count,
+)
+from gad.schemas.pagination import PaginatedOut
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
-@router.get("", response_model=list[NotificationOut])
+@router.get("", response_model=PaginatedOut[NotificationOut])
 async def list_endpoint(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
     unread_only: bool = Query(default=False),
-) -> list[NotificationOut]:
-    notifs = await list_notifications(session, current_user.id, unread_only=unread_only)
-    return [NotificationOut.model_validate(n) for n in notifs]
+    limit: int = Query(default=50, ge=1, le=100),
+    before: datetime | None = Query(default=None),
+) -> PaginatedOut[NotificationOut]:
+    notifs = await list_notifications(
+        session,
+        current_user.id,
+        unread_only=unread_only,
+        limit=limit,
+        before=before,
+    )
+    items = [NotificationOut.model_validate(n) for n in notifs]
+    next_cursor = items[-1].created_at.isoformat() if len(items) == limit and items else None
+    return PaginatedOut[NotificationOut](items=items, next_cursor=next_cursor)
 
 
 @router.get("/unread/count")
@@ -41,3 +59,21 @@ async def mark_read_endpoint(
 ) -> dict[str, str]:
     await mark_read(session, current_user.id, notification_id)
     return {"message": "Notificación marcada como leída"}
+
+
+@router.post("/read-all")
+async def mark_all_read_endpoint(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, int]:
+    count = await mark_all_read(session, current_user.id)
+    return {"marked": count}
+
+
+@router.delete("")
+async def delete_all_endpoint(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, int]:
+    count = await delete_all(session, current_user.id)
+    return {"deleted": count}

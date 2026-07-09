@@ -2,7 +2,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.auth.dependencies import get_current_user
@@ -22,6 +22,7 @@ from gad.safety.service import (
     get_peer_location,
     list_trusted_contacts,
     ping_location,
+    revoke_share_link,
     trigger_sos,
 )
 
@@ -96,6 +97,18 @@ async def share_link_endpoint(
 ) -> dict[str, str]:
     token = await generate_share_link(session, current_user, match_id)
     return {"token": token, "url": f"/s/{token}"}
+
+
+@router.delete("/safety/{match_id}/share-link")
+async def revoke_share_link_endpoint(
+    match_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    token: str = Query(..., description="Token de share-link a revocar"),
+) -> dict[str, str]:
+    from gad.auth.dependencies import get_token_store
+
+    await revoke_share_link(get_token_store(), token)
+    return {"message": "Link revocado"}
 
 
 @router.post("/safety/{match_id}/sos", response_model=SosOut)

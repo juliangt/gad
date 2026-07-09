@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -49,3 +49,21 @@ async def register_push(
     session.add(sub)
     await session.commit()
     return {"message": "Suscripción push registrada"}
+
+
+@router.delete("/subscription")
+async def unsubscribe_push(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    endpoint: str = Query(default=""),
+) -> dict[str, int]:
+    from sqlalchemy import delete
+
+    stmt = delete(PushSubscription).where(
+        PushSubscription.user_id == current_user.id
+    )
+    if endpoint:
+        stmt = stmt.where(PushSubscription.endpoint == endpoint)
+    result = await session.execute(stmt)
+    await session.commit()
+    return {"deleted": result.rowcount}

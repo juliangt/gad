@@ -227,22 +227,42 @@ async def list_applications_for_plan(
     return list(result.scalars().all())
 
 
-async def list_my_applications(session: AsyncSession, user: User) -> list[PlanApplication]:
-    result = await session.execute(
+async def list_my_applications(
+    session: AsyncSession,
+    user: User,
+    *,
+    limit: int = 50,
+    before: datetime | None = None,
+) -> list[PlanApplication]:
+    stmt = (
         select(PlanApplication)
         .where(PlanApplication.applicant_id == user.id)
         .order_by(PlanApplication.created_at.desc())
+        .limit(limit)
     )
+    if before is not None:
+        stmt = stmt.where(PlanApplication.created_at < before)
+    result = await session.execute(stmt)
     return list(result.scalars().all())
 
 
-async def list_my_matches(session: AsyncSession, user: User) -> list[Match]:
-    result = await session.execute(
+async def list_my_matches(
+    session: AsyncSession,
+    user: User,
+    *,
+    limit: int = 50,
+    before: datetime | None = None,
+) -> list[Match]:
+    stmt = (
         select(Match)
         .join(MatchParticipant, MatchParticipant.match_id == Match.id)
         .where(MatchParticipant.user_id == user.id)
         .order_by(Match.started_at.desc())
+        .limit(limit)
     )
+    if before is not None:
+        stmt = stmt.where(Match.started_at < before)
+    result = await session.execute(stmt)
     return list(result.scalars().unique().all())
 
 
