@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     # Rate limit
     rate_limit_enabled: bool = True
 
+    # Security headers
+    csp_policy: str = "default-src 'self'; frame-ancestors 'none'; base-uri 'none'"
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):
