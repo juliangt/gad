@@ -14,7 +14,9 @@ def create_access_token(user_id: str) -> str:
     payload = {
         "sub": user_id,
         "type": "access",
-        "iat": int(now.timestamp()),
+        # iat con resolución sub-segundo para comparaciones exactas contra
+        # password_changed_at (revocación de sesiones al cambiar contraseña).
+        "iat": now.timestamp(),
         "exp": int((now + timedelta(minutes=settings.access_token_expire_minutes)).timestamp()),
         "jti": secrets.token_hex(16),
     }
@@ -27,7 +29,7 @@ def create_refresh_token(user_id: str) -> str:
     payload = {
         "sub": user_id,
         "type": "refresh",
-        "iat": int(now.timestamp()),
+        "iat": now.timestamp(),
         "exp": int((now + timedelta(days=settings.refresh_token_expire_days)).timestamp()),
         "jti": secrets.token_hex(16),
     }

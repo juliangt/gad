@@ -62,6 +62,8 @@ async def get_current_user(
     if user.status != UserStatus.active:
         raise AuthError("Cuenta no activa")
     # Si la password cambió después de emitir este token, invalidarlo.
+    # iat tiene resolución sub-segundo, igual que password_changed_at, así la
+    # comparación es exacta: un login posterior al cambio siempre es válido.
     iat = payload.get("iat")
     if (
         user.password_changed_at is not None
