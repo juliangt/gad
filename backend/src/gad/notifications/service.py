@@ -30,7 +30,12 @@ async def create_notification(
 
 
 async def list_notifications(
-    session: AsyncSession, user_id: UUID, *, unread_only: bool = False, limit: int = 50
+    session: AsyncSession,
+    user_id: UUID,
+    *,
+    unread_only: bool = False,
+    limit: int = 50,
+    before: datetime | None = None,
 ) -> list[Notification]:
     stmt = (
         select(Notification)
@@ -40,6 +45,8 @@ async def list_notifications(
     )
     if unread_only:
         stmt = stmt.where(Notification.read_at.is_(None))
+    if before is not None:
+        stmt = stmt.where(Notification.created_at < before)
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
