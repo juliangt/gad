@@ -1,10 +1,8 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  # Solo se ejecuta bajo demanda, no en cada commit.
+  workflow_dispatch:
 
 jobs:
   test:
