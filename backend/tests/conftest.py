@@ -8,7 +8,7 @@ import os
 # Los tests de DB/Redis usan testcontainers con sus propios engines/clients.
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
-os.environ.setdefault("JWT_SECRET", "test-secret-at-least-16-chars")
+os.environ.setdefault("JWT_SECRET", "test-secret-at-least-32-bytes-long")
 # Deshabilita el rate limiting global: el limiter singleton intentaría conectar
 # al REDIS_URL (inaccesible en tests). test_rate_limit.py usa su propio limiter.
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")

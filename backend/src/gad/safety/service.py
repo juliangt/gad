@@ -207,12 +207,12 @@ async def revoke_share_link(store, token: str) -> None:
     El token safety_link no tiene jti propio, así que usamos un sufijo del token
     como identificador de revocación. Idempotente si el token es inválido/expirado.
     """
-    from jose import jwt as jose_jwt
+    import jwt
 
     from gad.config import settings
 
     try:
-        payload = jose_jwt.decode(
+        payload = jwt.decode(
             token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
         )
     except Exception:

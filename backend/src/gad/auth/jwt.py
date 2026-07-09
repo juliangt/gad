@@ -3,7 +3,8 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError
 
 from gad.config import get_settings
 
@@ -40,5 +41,5 @@ def decode_token(token: str) -> dict[str, Any]:
     settings = get_settings()
     try:
         return jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-    except JWTError as e:
-        raise JWTError(f"Token inválido: {e}") from e
+    except PyJWTError as e:
+        raise PyJWTError(f"Token inválido: {e}") from e

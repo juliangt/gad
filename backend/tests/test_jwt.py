@@ -2,7 +2,7 @@
 import time
 
 import pytest
-from jose import JWTError
+from jwt import PyJWTError
 
 from gad.auth.jwt import create_access_token, create_refresh_token, decode_token
 from gad.config import get_settings
@@ -42,7 +42,7 @@ def test_decode_invalid_signature_raises():
     token = create_access_token(user_id="user-123")
     # Manipular la firma
     tampered = token[:-4] + "XXXX"
-    with pytest.raises(JWTError):
+    with pytest.raises(PyJWTError):
         decode_token(tampered)
 
 
@@ -51,5 +51,5 @@ def test_decode_expired_token_raises(monkeypatch):
     get_settings.cache_clear()
     token = create_access_token(user_id="user-123")
     time.sleep(1)
-    with pytest.raises(JWTError):
+    with pytest.raises(PyJWTError):
         decode_token(token)
