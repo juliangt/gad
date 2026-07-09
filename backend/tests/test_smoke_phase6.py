@@ -67,7 +67,7 @@ async def test_end_to_end_flow(client):
         resp = await c.get("/health")
         assert resp.status_code == 200
 
-        # 5. Notifications vacías
+        # 5. Notifications vacías (formato paginado)
         resp = await c.get("/notifications", headers=headers)
         assert resp.status_code == 200
-        assert isinstance(resp.json(), list)
+        assert resp.json()["items"] == []

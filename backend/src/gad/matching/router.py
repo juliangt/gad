@@ -1,8 +1,9 @@
 # backend/src/gad/matching/router.py
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from geoalchemy2 import Geometry
 from sqlalchemy import cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +17,7 @@ from gad.matching.schemas import (
     MatchOut,
     ParticipantOut,
 )
+from gad.schemas.pagination import PaginatedOut
 from gad.matching.service import (
     accept_application,
     apply_to_plan,
@@ -160,22 +162,30 @@ async def withdraw_endpoint(
     return {"message": "Postulación retirada"}
 
 
-@router.get("/me/applications", response_model=list[ApplicationOut])
+@router.get("/me/applications", response_model=PaginatedOut[ApplicationOut])
 async def my_applications_endpoint(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> list[ApplicationOut]:
-    apps = await list_my_applications(session, current_user)
-    return [await _app_to_out(session, a) for a in apps]
+    limit: int = Query(default=50, ge=1, le=100),
+    before: datetime | None = Query(default=None),
+) -> PaginatedOut[ApplicationOut]:
+    apps = await list_my_applications(session, current_user, limit=limit, before=before)
+    items = [await _app_to_out(session, a) for a in apps]
+    next_cursor = items[-1].created_at.isoformat() if len(items) == limit and items else None
+    return PaginatedOut[ApplicationOut](items=items, next_cursor=next_cursor)
 
 
-@router.get("/matches", response_model=list[MatchOut])
+@router.get("/matches", response_model=PaginatedOut[MatchOut])
 async def my_matches_endpoint(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> list[MatchOut]:
-    matches = await list_my_matches(session, current_user)
-    return [await _match_to_out(session, m, current_user) for m in matches]
+    limit: int = Query(default=50, ge=1, le=100),
+    before: datetime | None = Query(default=None),
+) -> PaginatedOut[MatchOut]:
+    matches = await list_my_matches(session, current_user, limit=limit, before=before)
+    items = [await _match_to_out(session, m, current_user) for m in matches]
+    next_cursor = items[-1].started_at.isoformat() if len(items) == limit and items else None
+    return PaginatedOut[MatchOut](items=items, next_cursor=next_cursor)
 
 
 @router.get("/matches/{match_id}", response_model=MatchOut)
