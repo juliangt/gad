@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.auth.jwt import create_access_token, create_refresh_token, decode_token
 from gad.auth.oauth import GoogleUserInfo
+from gad.auth.password_reset import PasswordResetStore
 from gad.auth.passwords import hash_password, verify_password
 from gad.auth.token_store import TokenStore
 from gad.config import settings
@@ -141,5 +142,40 @@ async def change_password(
     # Revocación por timestamp (password_changed_at) invalida tokens previos;
     # revoke_user además invalida jtis trackeados en Redis (best-effort).
     await store.revoke_user(
+        str(user.id), ttl_seconds=settings.refresh_token_expire_days * 86400
+    )
+
+
+async def request_password_reset(
+    session: AsyncSession, store: PasswordResetStore, email: str
+) -> None:
+    """Genera un token si el usuario existe. No revela si el email existe."""
+    result = await session.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if user is None or user.password_hash is None:
+        return  # No-op silencioso
+    await store.issue(email)
+    # En producción: enviar email con el token. Aquí sólo se persiste.
+    # TODO(email): integrar con un servicio de email real (fuera de scope MVP).
+
+
+async def confirm_password_reset(
+    session: AsyncSession,
+    reset_store: PasswordResetStore,
+    token_store: TokenStore,
+    email: str,
+    token: str,
+    new_password: str,
+) -> None:
+    if not await reset_store.validate_and_consume(email, token):
+        raise InvalidTokenError("Token de reset inválido o expirado")
+    result = await session.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise InvalidCredentialsError("Credenciales inválidas")
+    user.password_hash = hash_password(new_password)
+    user.password_changed_at = datetime.now(UTC)
+    await session.commit()
+    await token_store.revoke_user(
         str(user.id), ttl_seconds=settings.refresh_token_expire_days * 86400
     )

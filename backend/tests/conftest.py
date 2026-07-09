@@ -79,21 +79,27 @@ async def redis_client(_redis_url) -> AsyncGenerator[Redis, None]:
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def _auth_token_store(_redis_url) -> AsyncGenerator[None, None]:
-    """Provee un TokenStore funcional a get_current_user para todos los tests.
+async def _auth_redis(_redis_url) -> AsyncGenerator[None, None]:
+    """Provee stores de Redis funcionales (TokenStore + PasswordResetStore) a
+    los endpoints autenticados para todos los tests.
 
-    Como get_current_user ahora valida jti revocado contra Redis, cualquier test
-    que use un endpoint autenticado necesita un TokenStore apuntando al Redis de
-    testcontainers. Este fixture autouse lo setea globalmente y limpia entre tests.
+    Como get_current_user ahora valida jti revocado contra Redis y el reset de
+    password persiste tokens en Redis, cualquier test que use esos endpoints
+    necesita stores apuntando al Redis de testcontainers. Este fixture autouse
+    los setea globalmente y limpia entre tests.
     """
     import gad.auth.dependencies as deps
+    import gad.auth.password_reset as pr
+    from gad.auth.password_reset import PasswordResetStore
     from gad.auth.token_store import TokenStore
 
     client = Redis.from_url(_redis_url)
     deps._token_store = TokenStore(client)
+    pr._store = PasswordResetStore(client)
     try:
         yield
     finally:
         deps._token_store = None
+        pr._store = None
         await client.flushdb()
         await client.aclose()
