@@ -127,7 +127,6 @@ Lo siguiente **no** está implementado en el frontend y queda como trabajo futur
 
 - **F5 — Chat realtime (WebSocket):** conexión WS, mensajería en vivo dentro del match. Actualmente no hay cliente de chat.
 - **F7 — PWA / Web Push:** `vite-plugin-pwa`, service worker custom (`src/sw.ts`), `PushManager.subscribe` y VAPID. Los hooks de push (`useVapidPublicKey`, `useRegisterPush`, `useUnregisterPush`) existen en `features/notifications/hooks.ts` pero no hay UI ni SW que los consuma; las notificaciones operan vía HTTP poll.
-- **E2E con Playwright:** specs del flujo crítico (register→plan→postular→aceptar→match→chat→complete→review) contra backend en docker-compose.
 - **CI de frontend:** workflow de GitHub Actions (lint, build, test).
 
 ## Estructura
@@ -136,7 +135,8 @@ Lo siguiente **no** está implementado en el frontend y queda como trabajo futur
 gad/
 ├── docs/
 │   └── superpowers/          # spec de diseño + planes por fase
-├── docker-compose.yml        # db (postgis) + redis + api
+├── docker-compose.yml        # db (postgis) + redis + api + web (nginx) + seed
+├── docker-compose.dev.yml    # override dev (HMR en web, --reload en api)
 ├── .env.example              # variables de entorno de ejemplo
 ├── backend/
 │   ├── src/gad/
@@ -155,6 +155,7 @@ gad/
 │   │   └── models/           # modelos SQLAlchemy + GeoAlchemy2
 │   ├── alembic/              # migraciones
 │   ├── scripts/make_admin.py # CLI para otorgar/revocar rol admin
+│   └── scripts/seed.py       # CLI para poblar datos de prueba
 │   └── tests/                # suite con testcontainers (Postgres/Redis reales)
 └── frontend/
     ├── index.html            # entry point
@@ -199,17 +200,66 @@ npm install                 # instala dependencias
 npm run dev                 # dev server en :5173 (proxy /api y /ws al backend)
 npm test                    # tests unitarios (Vitest)
 npm run build               # build de producción
+npm run test:e2e            # tests E2E (Playwright) — requiere el stack Docker levantado
 ```
 
-El dev server de Vite hace proxy de `/api` y `/ws` al backend (`http://localhost:8000` por defecto, configurable con `VITE_PROXY_TARGET`).
+El dev server de Vite hace proxy de `/api` y `/ws` al backend (`http://localhost:8000` por defecto, configurable con `VITE_PROXY_TARGET`). Los tests E2E de Playwright corren contra el stack Docker prod-like; ver la sección [Entorno Docker (full-stack)](#entorno-docker-full-stack) para levantarlo y los comandos detallados.
 
-### Levantar todo con Docker
+### Entorno Docker (full-stack)
+
+El stack completo corre en Docker: `db` (Postgres+PostGIS), `redis`, `api` (FastAPI en `:8000`), `web` (nginx en `:5173` que sirve el frontend y hace de reverse proxy `/api` → api) y `seed` (puebla datos de prueba una sola vez).
+
+#### Producción-like (default)
 
 ```bash
+# Copiar .env.example a .env y ajustar POSTGRES_PASSWORD y JWT_SECRET
+cp .env.example .env
+
 docker compose up --build
 ```
 
-Levanta `db` (Postgres+PostGIS), `redis` y `api` (FastAPI en `:8000`).
+- Frontend: <http://localhost:5173> (nginx sirve el build de Vite + proxy `/api` y `/ws` al backend).
+- API: <http://localhost:8000> (directo; el navegador usa `:5173`).
+- El servicio `seed` corre automáticamente la primera vez (y es idempotente: no duplica si ya se aplicó).
+
+#### Desarrollo con HMR
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+Override para desarrollo: `web` pasa a ser el dev server de Vite (HMR, puerto `:5173`) y `api` arranca con `--reload`. Las migraciones de Alembic corren automáticamente al levantar (via `entrypoint.dev.sh`). Los cambios en `frontend/` y `backend/src/` se reflejan en caliente (montados como volúmenes).
+
+#### Datos de prueba (seed)
+
+El seed crea 5 usuarios y un dataset rico (planes, un match completado con reseñas, notificaciones, contactos de confianza, availability):
+
+| Usuario | Email | Password | Rol |
+|---|---|---|---|
+| Admin | `admin@gad.test` | `Test1234` | admin |
+| Alice | `alice@gad.test` | `Test1234` | user |
+| Bob | `bob@gad.test` | `Test1234` | user |
+| Carol | `carol@gad.test` | `Test1234` | user |
+| Diana | `diana@gad.test` | `Test1234` | user |
+
+Para re-sembrar desde cero:
+
+```bash
+docker compose run --rm seed python -m scripts.seed --reset
+```
+
+#### Tests E2E (Playwright)
+
+Con el stack prod-like levantado (`docker compose up`):
+
+```bash
+cd frontend
+npx playwright install chromium   # solo la primera vez
+npm run test:e2e                  # corre los specs contra localhost:5173
+npm run test:e2e:ui               # inspector interactivo
+```
+
+Los specs asumen el seed aplicado (login con cuentas sembradas, flujo de admin, smoke de explore/matches).
 
 ### Tests en Docker
 
