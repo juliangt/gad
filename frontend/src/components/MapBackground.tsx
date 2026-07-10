@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { cn } from '../lib/utils';
@@ -43,11 +43,13 @@ function MapCenterUpdater({ center }: { center: [number, number] }) {
 
 interface PlanLocation {
   id: string;
+  /** Latitud. En F3 se reemplaza por PlanListItem.location_lat. */
   lat: number;
+  /** Longitud. En F3 se reemplaza por PlanListItem.location_lng. */
   lng: number;
 }
 
-interface MapBackgroundProps {
+export interface MapBackgroundProps {
   userLocation: [number, number] | null;
   plans: PlanLocation[];
   className?: string;
