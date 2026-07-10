@@ -8,6 +8,10 @@ import { ResetPasswordPage } from './auth/pages/ResetPasswordPage';
 import { ChangePasswordPage } from './auth/pages/ChangePasswordPage';
 import { ExploreStub } from './pages/ExploreStub';
 import { PublicShareStub } from './pages/PublicShareStub';
+import ProfilePage from './features/users/pages/ProfilePage';
+import EditProfilePage from './features/users/pages/EditProfilePage';
+import BlockedUsersPage from './features/users/pages/BlockedUsersPage';
+import UserPublicPage from './features/users/pages/UserPublicPage';
 
 export const router = createBrowserRouter([
   // Públicas (sin auth)
@@ -23,7 +27,11 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <Navigate to="/explore" replace /> },
       { path: '/explore', element: <ExploreStub /> },
+      { path: '/me', element: <ProfilePage /> },
+      { path: '/me/edit', element: <EditProfilePage /> },
+      { path: '/me/blocks', element: <BlockedUsersPage /> },
       { path: '/me/password', element: <ChangePasswordPage /> },
+      { path: '/users/:userId', element: <UserPublicPage /> },
       // El resto de rutas protegidas se añaden en F2-F7.
     ],
   },
