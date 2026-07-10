@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost, setApplyAuth } from '../api/client';
 import { createAuthInterceptor, subscribeAuthEvents } from '../api/auth-interceptor';
 import {
@@ -33,6 +34,11 @@ export interface AuthContextValue {
   register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
+  /** POST /auth/change-password → el backend invalida los access tokens previos,
+   *  así que limpiamos sesión (sin llamar /auth/logout) y forzamos re-login. */
+  changePassword: (oldPassword: string, newPassword: string) => Promise<void>;
+  /** POST /auth/oauth/google con {refresh_token: <auth_code>}. */
+  loginWithGoogle: (authCode: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -40,6 +46,12 @@ export const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserPublic | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
+  const queryClient = useQueryClient();
+
+  const invalidateMe = useCallback(() => {
+    // Prepara a F2+ (que usa GET /me con key ['me']); barato si no existe aún.
+    void queryClient.invalidateQueries({ queryKey: ['me'] });
+  }, [queryClient]);
 
   const fetchMe = useCallback(async (): Promise<UserPublic | null> => {
     if (!getAccessToken()) return null;
@@ -67,12 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await apiGet<UserPublic>('/auth/me');
       setUser(me);
       setStatus('authenticated');
+      invalidateMe();
     } catch {
       clearTokens();
       setUser(null);
       setStatus('unauthenticated');
     }
-  }, []);
+  }, [invalidateMe]);
 
   // Bootstrap: registrar interceptor + intentar recuperar sesión al montar.
   useEffect(() => {
@@ -86,32 +99,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     (async () => {
-      // 1) ¿Hay access token en memoria? (recarga tibia dentro de los 15 min no aplica
-      //    porque se pierde; pero cubre el caso de login en la misma sesión).
       const me = await fetchMe();
       if (me) {
         setUser(me);
         setStatus('authenticated');
         return;
       }
-      // 2) Sin access válido → intentar refresh.
       await refresh();
     })();
 
     return unsub;
   }, [fetchMe, refresh]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const tokens = await apiPost<TokenOut>(
-      '/auth/login',
-      { email, password },
-      { publicEndpoint: true },
-    );
-    setTokens(tokens.access_token, tokens.refresh_token);
-    const me = await apiGet<UserPublic>('/auth/me');
-    setUser(me);
-    setStatus('authenticated');
-  }, []);
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const tokens = await apiPost<TokenOut>(
+        '/auth/login',
+        { email, password },
+        { publicEndpoint: true },
+      );
+      setTokens(tokens.access_token, tokens.refresh_token);
+      const me = await apiGet<UserPublic>('/auth/me');
+      setUser(me);
+      setStatus('authenticated');
+      invalidateMe();
+    },
+    [invalidateMe],
+  );
 
   const register = useCallback(
     async (email: string, password: string, displayName: string) => {
@@ -124,8 +138,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await apiGet<UserPublic>('/auth/me');
       setUser(me);
       setStatus('authenticated');
+      invalidateMe();
     },
-    [],
+    [invalidateMe],
+  );
+
+  const loginWithGoogle = useCallback(
+    async (authCode: string) => {
+      const tokens = await apiPost<TokenOut>(
+        '/auth/oauth/google',
+        { refresh_token: authCode },
+        { publicEndpoint: true },
+      );
+      setTokens(tokens.access_token, tokens.refresh_token);
+      const me = await apiGet<UserPublic>('/auth/me');
+      setUser(me);
+      setStatus('authenticated');
+      invalidateMe();
+    },
+    [invalidateMe],
   );
 
   const logout = useCallback(async () => {
@@ -140,11 +171,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearTokens();
     setUser(null);
     setStatus('unauthenticated');
-  }, []);
+    invalidateMe();
+  }, [invalidateMe]);
+
+  const changePassword = useCallback(
+    async (oldPassword: string, newPassword: string) => {
+      // El endpoint requiere Bearer (access actual); el api client lo inyecta.
+      await apiPost('/auth/change-password', {
+        old_password: oldPassword,
+        new_password: newPassword,
+      });
+      // ⚠️ El backend invalidó TODOS los access tokens previos (incluido este).
+      // No llamamos a /auth/logout (fallaría con 401). Limpiamos y forzamos re-login.
+      clearTokens();
+      setUser(null);
+      setStatus('unauthenticated');
+      invalidateMe();
+    },
+    [invalidateMe],
+  );
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, status, login, register, logout, refresh }),
-    [user, status, login, register, logout, refresh],
+    () => ({
+      user,
+      status,
+      login,
+      register,
+      logout,
+      refresh,
+      changePassword,
+      loginWithGoogle,
+    }),
+    [user, status, login, register, logout, refresh, changePassword, loginWithGoogle],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

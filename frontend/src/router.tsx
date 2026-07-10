@@ -1,24 +1,30 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { RequireAuth } from './auth/RequireAuth';
 import { RequireAdmin } from './auth/RequireAdmin';
+import { LoginPage } from './auth/pages/LoginPage';
+import { RegisterPage } from './auth/pages/RegisterPage';
+import { ForgotPasswordPage } from './auth/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './auth/pages/ResetPasswordPage';
+import { ChangePasswordPage } from './auth/pages/ChangePasswordPage';
 import { ExploreStub } from './pages/ExploreStub';
-import { LoginStub } from './pages/LoginStub';
-import { RegisterStub } from './pages/RegisterStub';
 import { PublicShareStub } from './pages/PublicShareStub';
 
 export const router = createBrowserRouter([
-  // Públicas
-  { path: '/login', element: <LoginStub /> },
-  { path: '/register', element: <RegisterStub /> },
+  // Públicas (sin auth)
+  { path: '/login', element: <LoginPage /> },
+  { path: '/register', element: <RegisterPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   { path: '/s/:token', element: <PublicShareStub /> },
 
-  // Protegidas
+  // Protegidas (RequireAuth)
   {
     element: <RequireAuth />,
     children: [
       { path: '/', element: <Navigate to="/explore" replace /> },
       { path: '/explore', element: <ExploreStub /> },
-      // El resto de rutas protegidas se añaden en F1-F7.
+      { path: '/me/password', element: <ChangePasswordPage /> },
+      // El resto de rutas protegidas se añaden en F2-F7.
     ],
   },
 
