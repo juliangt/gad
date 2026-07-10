@@ -113,13 +113,22 @@ El nicho es el cruce entre *compañía espontánea de corta duración*, *ubicaci
 - **Notificaciones push:** Web Push API (pywebpush + VAPID).
 - **Jobs:** APScheduler (expiración periódica de planes y disponibilidad).
 - **Observabilidad:** structlog (logging) + Prometheus (métricas).
-- **Frontend (planificado):** React + Vite + TypeScript + Tailwind, Leaflet + OpenStreetMap.
+- **Frontend:** React 19 + Vite 6 + TypeScript + Tailwind v4, TanStack Query v5, react-router-dom v7, Leaflet + OpenStreetMap.
 
 ## Estado del proyecto
 
 El **backend está implementado**: autenticación completa, planes geolocalizados, matching por postulación, chat en tiempo real (WebSocket), modo disponible con alertas, seguridad (ubicación en vivo, contactos de confianza, SOS), reseñas y reputación, reportes, notificaciones in-app y push, panel de admin, rate limiting, headers de seguridad y observabilidad.
 
-El **frontend aún no está implementado**. El spec de diseño y los planes de implementación (fases 0–6 + hardening) están en [`docs/superpowers/`](docs/superpowers/).
+El **frontend está implementado** (fases F0–F7) en [`frontend/`](frontend/): autenticación (email + Google), perfil y preferencias, planes (explorar/crear/editar/cancelar), matching (postularse, aceptar/rechazar, matches), seguridad (contactos, live-tracking, peer, SOS, share-link + QR, vista pública), reseñas, reportes, modo disponible, notificaciones (lista, badge con polling, marcar/borrar) y panel de admin (dashboard, reportes, usuarios, reseñas). Build de producción verde, tests unitarios con Vitest.
+
+### Pendiente / Fuera de alcance
+
+Lo siguiente **no** está implementado en el frontend y queda como trabajo futuro:
+
+- **F5 — Chat realtime (WebSocket):** conexión WS, mensajería en vivo dentro del match. Actualmente no hay cliente de chat.
+- **F7 — PWA / Web Push:** `vite-plugin-pwa`, service worker custom (`src/sw.ts`), `PushManager.subscribe` y VAPID. Los hooks de push (`useVapidPublicKey`, `useRegisterPush`, `useUnregisterPush`) existen en `features/notifications/hooks.ts` pero no hay UI ni SW que los consuma; las notificaciones operan vía HTTP poll.
+- **E2E con Playwright:** specs del flujo crítico (register→plan→postular→aceptar→match→chat→complete→review) contra backend en docker-compose.
+- **CI de frontend:** workflow de GitHub Actions (lint, build, test).
 
 ## Estructura
 
