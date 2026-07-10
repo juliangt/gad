@@ -12,8 +12,10 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 30_000,
       retry: 1,
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true, // refresca el badge de notificaciones y listas al volver a la tab
+      gcTime: 5 * 60_000,
     },
+    mutations: { retry: 0 },
   },
 });
 

@@ -1,19 +1,17 @@
-import { lazy, Suspense } from 'react';
-import type { ReactNode } from 'react';
+import { lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { RequireAuth } from './auth/RequireAuth';
-import { RequireAdmin } from './auth/RequireAdmin';
 import { LoginPage } from './auth/pages/LoginPage';
 import { RegisterPage } from './auth/pages/RegisterPage';
 import { ForgotPasswordPage } from './auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './auth/pages/ResetPasswordPage';
 import { ChangePasswordPage } from './auth/pages/ChangePasswordPage';
-import { ExploreStub } from './pages/ExploreStub';
-import { Spinner } from './components/ui/Spinner';
+import { PageSuspense } from './components/layout/PageSuspense';
 import ProfilePage from './features/users/pages/ProfilePage';
 import EditProfilePage from './features/users/pages/EditProfilePage';
 import BlockedUsersPage from './features/users/pages/BlockedUsersPage';
 import UserPublicPage from './features/users/pages/UserPublicPage';
+import { RequireAdminRoute } from './features/admin/RequireAdminRoute';
 
 const ExplorePage = lazy(() => import('./features/plans/pages/ExplorePage'));
 const CreatePlanPage = lazy(() => import('./features/plans/pages/CreatePlanPage'));
@@ -28,19 +26,14 @@ const TrustedContactsPage = lazy(() =>
 const SafetyPage = lazy(() => import('./features/safety/pages/SafetyPage'));
 const ShareLinkView = lazy(() => import('./features/safety/pages/ShareLinkView'));
 
-function PageSuspense({ children }: { children: ReactNode }) {
-  return (
-    <Suspense
-      fallback={
-        <div className="w-full h-[100dvh] flex items-center justify-center">
-          <Spinner className="w-8 h-8" />
-        </div>
-      }
-    >
-      {children}
-    </Suspense>
-  );
-}
+// F7 — Notifications
+const NotificationsPage = lazy(() => import('./features/notifications/pages/NotificationsPage'));
+
+// F7 — Admin
+const DashboardPage = lazy(() => import('./features/admin/pages/DashboardPage'));
+const ReportsAdminPage = lazy(() => import('./features/admin/pages/ReportsAdminPage'));
+const UsersAdminPage = lazy(() => import('./features/admin/pages/UsersAdminPage'));
+const ReviewsAdminPage = lazy(() => import('./features/admin/pages/ReviewsAdminPage'));
 
 export const router = createBrowserRouter([
   // Públicas (sin auth)
@@ -69,16 +62,20 @@ export const router = createBrowserRouter([
       { path: '/me/applications', element: <PageSuspense><MyApplicationsPage /></PageSuspense> },
       { path: '/me/password', element: <ChangePasswordPage /> },
       { path: '/users/:userId', element: <UserPublicPage /> },
-      // El resto de rutas protegidas se añaden en F2-F7.
+      // F7 — Notifications
+      { path: '/notifications', element: <PageSuspense><NotificationsPage /></PageSuspense> },
     ],
   },
 
-  // Admin (placeholder)
+  // Admin (F7 — RequireAdminRoute verifica is_admin vía GET /me)
   {
-    element: <RequireAdmin />,
+    element: <RequireAdminRoute />,
     children: [
-      { path: '/admin', element: <ExploreStub /> },
-      { path: '/admin/*', element: <ExploreStub /> },
+      { path: '/admin', element: <PageSuspense><DashboardPage /></PageSuspense> },
+      { path: '/admin/reports', element: <PageSuspense><ReportsAdminPage /></PageSuspense> },
+      { path: '/admin/users', element: <PageSuspense><UsersAdminPage /></PageSuspense> },
+      { path: '/admin/reviews', element: <PageSuspense><ReviewsAdminPage /></PageSuspense> },
+      { path: '/admin/*', element: <Navigate to="/admin" replace /> },
     ],
   },
 
