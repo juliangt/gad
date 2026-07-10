@@ -138,24 +138,46 @@ gad/
 │   └── superpowers/          # spec de diseño + planes por fase
 ├── docker-compose.yml        # db (postgis) + redis + api
 ├── .env.example              # variables de entorno de ejemplo
-└── backend/
-    ├── src/gad/
-    │   ├── main.py           # factory de la app FastAPI + lifespan
-    │   ├── auth/             # registro, login, OAuth, JWT, reset password
-    │   ├── users/            # perfil, preferencias, avatar, bloqueos
-    │   ├── plans/            # crear/listar/editar/cancelar planes
-    │   ├── matching/         # postulaciones, matches, completar/cancelar
-    │   ├── chat/             # mensajes REST + WebSocket
-    │   ├── availability/     # modo disponible + alertas geográficas
-    │   ├── safety/           # contactos, ubicación en vivo, share-link, SOS
-    │   ├── reviews/          # reseñas + reputación
-    │   ├── reports/          # reportes de usuarios
-    │   ├── notifications/    # notificaciones in-app + Web Push
-    │   ├── admin/            # panel de moderación
-    │   └── models/           # modelos SQLAlchemy + GeoAlchemy2
-    ├── alembic/              # migraciones
-    ├── scripts/make_admin.py # CLI para otorgar/revocar rol admin
-    └── tests/                # suite con testcontainers (Postgres/Redis reales)
+├── backend/
+│   ├── src/gad/
+│   │   ├── main.py           # factory de la app FastAPI + lifespan
+│   │   ├── auth/             # registro, login, OAuth, JWT, reset password
+│   │   ├── users/            # perfil, preferencias, avatar, bloqueos
+│   │   ├── plans/            # crear/listar/editar/cancelar planes
+│   │   ├── matching/         # postulaciones, matches, completar/cancelar
+│   │   ├── chat/             # mensajes REST + WebSocket
+│   │   ├── availability/     # modo disponible + alertas geográficas
+│   │   ├── safety/           # contactos, ubicación en vivo, share-link, SOS
+│   │   ├── reviews/          # reseñas + reputación
+│   │   ├── reports/          # reportes de usuarios
+│   │   ├── notifications/    # notificaciones in-app + Web Push
+│   │   ├── admin/            # panel de moderación
+│   │   └── models/           # modelos SQLAlchemy + GeoAlchemy2
+│   ├── alembic/              # migraciones
+│   ├── scripts/make_admin.py # CLI para otorgar/revocar rol admin
+│   └── tests/                # suite con testcontainers (Postgres/Redis reales)
+└── frontend/
+    ├── index.html            # entry point
+    ├── vite.config.ts        # Vite + proxy /api y /ws al backend
+    ├── vitest.config.ts      # Vitest (jsdom + coverage)
+    └── src/
+        ├── main.tsx          # bootstrap (QueryClient, router, AuthProvider)
+        ├── router.tsx        # rutas con lazy/code-split + guards (auth/admin)
+        ├── api/              # cliente HTTP (fetch wrapper, ApiError, types)
+        ├── auth/             # login, registro, OAuth Google, rate limit
+        ├── lib/              # geo (haversine/geo), format, env feature flags
+        ├── components/       # UI primitives (Button, Modal, Avatar…) y layout
+        ├── pages/            # landing y rutas top-level
+        └── features/         # dominios (feature-sliced)
+            ├── plans/        # explorar, crear, editar, cancelar
+            ├── matching/     # postularse, aceptar/rechazar, matches
+            ├── users/        # perfil, preferencias, avatar, bloqueos
+            ├── safety/       # contactos, live-tracking, peer, SOS, share-link
+            ├── reviews/      # reseñas + reputación
+            ├── reports/      # reportes de usuarios
+            ├── availability/ # modo disponible
+            ├── notifications/# lista, badge, marcar/borrar
+            └── admin/        # dashboard, reportes, usuarios, reseñas
 ```
 
 ## Desarrollo
@@ -168,6 +190,18 @@ uv run uvicorn gad.main:app --reload # levanta la API en :8000
 ```
 
 Variables de entorno en `.env` (ver `.env.example`). El `entrypoint.sh` espera a la DB, corre las migraciones (`alembic upgrade head`) y arranca la API.
+
+### Frontend
+
+```bash
+cd frontend
+npm install                 # instala dependencias
+npm run dev                 # dev server en :5173 (proxy /api y /ws al backend)
+npm test                    # tests unitarios (Vitest)
+npm run build               # build de producción
+```
+
+El dev server de Vite hace proxy de `/api` y `/ws` al backend (`http://localhost:8000` por defecto, configurable con `VITE_PROXY_TARGET`).
 
 ### Levantar todo con Docker
 
