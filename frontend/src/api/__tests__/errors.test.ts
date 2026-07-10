@@ -21,6 +21,23 @@ describe('ApiError', () => {
     const err = new ApiError('not_found', 404, 'No existe');
     expect(err.message).toBe('No existe');
   });
+
+  it('acepta retryAfter opcional para 429', () => {
+    const err = new ApiError('rate_limit_exceeded', 429, 'Demasiados intentos', 42);
+    expect(err.retryAfter).toBe(42);
+  });
+
+  it('retryAfter es undefined por defecto', () => {
+    const err = new ApiError('invalid_credentials', 401, 'x');
+    expect(err.retryAfter).toBeUndefined();
+  });
+});
+
+describe('retryAfter', () => {
+  it('ApiError expone retryAfter cuando se construye con él', () => {
+    const err = new ApiError('rate_limit_exceeded', 429, 'limite', 30);
+    expect(err.retryAfter).toBe(30);
+  });
 });
 
 describe('mapErrorMessage', () => {

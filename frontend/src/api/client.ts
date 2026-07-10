@@ -61,7 +61,18 @@ async function parseError(res: Response): Promise<ApiError> {
   } catch {
     // Respuesta sin body JSON: dejamos el detail por defecto.
   }
-  return new ApiError(code, res.status, detail);
+
+  // Rate limit: el backend envía Retry-After en segundos.
+  let retryAfter: number | undefined;
+  const retryAfterHeader = res.headers.get('Retry-After');
+  if (retryAfterHeader) {
+    const parsed = Number(retryAfterHeader);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      retryAfter = parsed;
+    }
+  }
+
+  return new ApiError(code, res.status, detail, retryAfter);
 }
 
 /**

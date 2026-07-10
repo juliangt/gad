@@ -15,18 +15,21 @@ const ERROR_MESSAGES_ES: Record<string, string> = {
 
 const DEFAULT_MESSAGE_ES = 'Ocurrió un error inesperado.';
 
-/** Error de dominio del backend. `code` es null si la respuesta no era GADError. */
+/** Error de dominio del backend. `code` es null si la respuesta no era GADError.
+ *  `retryAfter` (segundos) se setea cuando llega un 429 con header `Retry-After`. */
 export class ApiError extends Error {
   readonly code: string | null;
   readonly status: number;
   readonly detail: string;
+  readonly retryAfter?: number;
 
-  constructor(code: string | null, status: number, detail: string) {
+  constructor(code: string | null, status: number, detail: string, retryAfter?: number) {
     super(detail);
     this.name = 'ApiError';
     this.code = code;
     this.status = status;
     this.detail = detail;
+    this.retryAfter = retryAfter;
   }
 }
 
