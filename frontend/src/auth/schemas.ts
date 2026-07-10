@@ -31,12 +31,24 @@ export const forgotPasswordSchema = z.object({
 });
 
 /** Confirmar reseteo: el token llega por query param (?token=); el form pide new + confirm. */
-export const resetPasswordSchema = z
-  .object({
-    token: z.string().min(1, 'Falta el token de reseteo'),
-    new_password: passwordSchema,
-    confirm_password: passwordSchema,
-  })
+const resetPasswordFields = z.object({
+  token: z.string().min(1, 'Falta el token de reseteo'),
+  new_password: passwordSchema,
+  confirm_password: passwordSchema,
+});
+
+export const resetPasswordSchema = resetPasswordFields.refine(
+  (data) => data.new_password === data.confirm_password,
+  {
+    message: 'Las contraseñas no coinciden',
+    path: ['confirm_password'],
+  },
+);
+
+/** Versión del schema de reseteo sin el campo `token` (el token llega por query param,
+ *  no por el form). Se usa en ResetPasswordPage para validar solo new + confirm. */
+export const resetPasswordFormSchema = resetPasswordFields
+  .omit({ token: true })
   .refine((data) => data.new_password === data.confirm_password, {
     message: 'Las contraseñas no coinciden',
     path: ['confirm_password'],
