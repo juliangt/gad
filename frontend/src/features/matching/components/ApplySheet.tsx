@@ -24,7 +24,7 @@ export function ApplySheet({ planId, planTitle, onClose, onApplied }: Props) {
     watch,
     formState: { errors },
   } = useForm<ApplicationInForm>({
-    resolver: zodResolver(applicationInSchema),
+    resolver: zodResolver(applicationInSchema) as any,
     defaultValues: { message: null },
     mode: 'onChange',
   });

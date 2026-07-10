@@ -55,7 +55,7 @@ export default function CreatePlanPage() {
     watch,
     formState: { errors, isSubmitting },
   } = useForm<PlanInForm>({
-    resolver: zodResolver(planInSchema),
+    resolver: zodResolver(planInSchema) as any,
     defaultValues,
     mode: 'onTouched',
   });

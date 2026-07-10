@@ -8,7 +8,7 @@ export const reviewSchema = z.object({
   match_id: z.string().min(1, 'Falta el encuentro.'),
   reviewee_id: z.string().min(1, 'Falta la persona a reseñar.'),
   rating: z
-    .number({ invalid_type_error: 'Seleccioná una calificación.' })
+    .number({ message: 'Seleccioná una calificación.' })
     .int()
     .min(1, 'Seleccioná al menos 1 estrella.')
     .max(5, 'Máximo 5 estrellas.'),
