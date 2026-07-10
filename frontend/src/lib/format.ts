@@ -16,8 +16,10 @@ export function formatRelativeTime(
   if (diffMin < 1) return 'hace menos de un minuto';
   if (diffMin < 60) return `hace ${diffMin} minutos`;
 
-  // >1h: usamos formatDistanceToNow con locale es, que aporta "hace alrededor de X horas/días".
-  return formatDistanceToNow(d, { addSuffix: true, locale: es, baseDate: reference });
+  // >1h: usamos formatDistanceToNow con locale es, que aporta "hace X horas/días".
+  // Nota: date-fns v4 no acepta baseDate; usa Date.now() internamente, que respeta
+  // los fake timers de Vitest (vi.setSystemTime).
+  return formatDistanceToNow(d, { addSuffix: true, locale: es });
 }
 
 /**
