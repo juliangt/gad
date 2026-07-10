@@ -1,4 +1,4 @@
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format as fnsFormat } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 /**
@@ -38,4 +38,13 @@ export function formatDistance(meters: number): string {
 export function formatRating(rating: number | null | undefined): string {
   if (rating === null || rating === undefined || Number.isNaN(rating)) return '—';
   return rating.toFixed(1).replace('.', ',');
+}
+
+/**
+ * Fecha y hora absoluta en es: "10 de julio, 18:30".
+ */
+export function formatDateTime(date: Date | string | number): string {
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return '—';
+  return fnsFormat(d, "d 'de' MMMM, HH:mm", { locale: es });
 }

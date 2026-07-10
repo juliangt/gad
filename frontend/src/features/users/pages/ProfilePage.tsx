@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Star, ChevronRight, Ban, Pencil, Users } from 'lucide-react';
+import { Star, ChevronRight, Ban, Pencil, Users, ClipboardList } from 'lucide-react';
 import { Spinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { useMe } from '../hooks';
@@ -69,6 +69,7 @@ export default function ProfilePage() {
       {/* Navegación */}
       <div className="flex-1 px-6 py-6 flex flex-col gap-3">
         <NavLink to="/me/edit" icon={<Pencil className="w-5 h-5 text-gray-400" />} label="Editar perfil" />
+        <NavLink to="/me/applications" icon={<ClipboardList className="w-5 h-5 text-gray-400" />} label="Mis postulaciones" />
         <NavLink to="/me/blocks" icon={<Ban className="w-5 h-5 text-gray-400" />} label="Usuarios bloqueados" />
         {/* /me/trusted-contacts se implementa en F6; se enlaza como teaser */}
         <NavLink to="/me/trusted-contacts" icon={<Users className="w-5 h-5 text-gray-400" />} label="Contactos de confianza" />
