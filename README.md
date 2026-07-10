@@ -135,6 +135,7 @@ Lo siguiente **no** está implementado en el frontend y queda como trabajo futur
 gad/
 ├── docs/
 │   └── superpowers/          # spec de diseño + planes por fase
+├── Makefile                  # wrappers de docker compose (make help)
 ├── docker-compose.yml        # db (postgis) + redis + api + web (nginx) + seed
 ├── docker-compose.dev.yml    # override dev (HMR en web, --reload en api)
 ├── .env.example              # variables de entorno de ejemplo
@@ -180,6 +181,39 @@ gad/
             ├── notifications/# lista, badge, marcar/borrar
             └── admin/        # dashboard, reportes, usuarios, reseñas
 ```
+
+## Comandos (Makefile)
+
+Hay un `Makefile` en la raíz que envuelve los comandos habituales de Docker Compose para el stack full-stack. Lista completa con `make help` (o simplemente `make`).
+
+```bash
+cp .env.example .env   # solo la primera vez; completar POSTGRES_PASSWORD y JWT_SECRET
+make up-d              # levanta el stack prod-like en background
+make up-dev-d          # levanta el stack de desarrollo (HMR + reload) en background
+```
+
+| Target | Acción |
+|---|---|
+| `make up` / `make up-d` | Levanta el stack prod-like (foreground / background). |
+| `make up-dev` / `make up-dev-d` | Levanta el stack de desarrollo (Vite HMR + `uvicorn --reload`). |
+| `make down` | Frena y elimina contenedores (mantiene los datos/volumen). |
+| `make stop` / `make start` | Frena / reanuda contenedores sin borrarlos. |
+| `make restart` / `make restart-api` / `make restart-web` | Reinicia todos / solo API / solo frontend. |
+| `make ps` / `make logs` / `make logs-api` | Estado / logs de todos / logs de un servicio. |
+| `make health` | Comprueba el endpoint `/health` de la API. |
+| `make build` / `make pull` | Reconstruye imágenes / descarga imágenes base nuevas. |
+| `make migrate` / `make migrate-new NAME=...` | Aplica migraciones / crea una migración vacía. |
+| `make seed` / `make seed-reset` | Aplica el seed (idempotente) / trunca y resiembra. |
+| `make db-shell` | Abre un `psql` interactivo contra la base de datos. |
+| `make db-reset` | **Destructivo:** borra el volumen de DB y la vuelve a crear (migraciones + seed). |
+| `make shell-api` / `make shell-web` | Shell dentro del contenedor de la API / frontend. |
+| `make test` / `make test-fe` / `make test-e2e` | Tests backend / tests frontend (Vitest) / E2E (Playwright). |
+| `make clean` | Elimina contenedores e imágenes locales (sin tocar volúmenes). |
+| `make nuke` | **Destructivo:** borra contenedores, imágenes **y volúmenes** (datos incluidos). |
+
+Para forzar el perfil de dev en un comando puntual, usar `DEV=1` (p. ej. `make DEV=1 logs-api`). El flujo recomendado es usar directamente los targets `up-dev*`.
+
+> Los targets asumen que la herramienta `make` está instalada (incluida por defecto en macOS/Linux). No requieren GNU make específicamente.
 
 ## Desarrollo
 
