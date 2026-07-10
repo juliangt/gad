@@ -5,9 +5,9 @@ import { useAuth } from '../../auth/useAuth';
 import { Spinner } from '../../components/ui/Spinner';
 
 /**
- * `GET /me` (UserDetail) — el contrato actual NO garantiza `is_admin` en todas
- * las formas de usuario, pero `UserDetail` del backend sí lo incluye en la
- * implementación. Lo leemos defensivamente: si el campo no viene, default false.
+ * `GET /auth/me` (UserPublic) — incluye `is_admin` para que el guard pueda
+ * decidir sin un endpoint aparte. Se lee defensivamente: si el campo no viene,
+ * default false.
  */
 interface MeForAdmin {
   is_admin?: boolean;
@@ -18,7 +18,7 @@ function useIsAdmin(): { isLoading: boolean; isAdmin: boolean } {
   const enabled = status === 'authenticated';
   const { data, isLoading } = useQuery({
     queryKey: ['me', 'admin-check'],
-    queryFn: () => apiGet<MeForAdmin>('/me'),
+    queryFn: () => apiGet<MeForAdmin>('/auth/me'),
     enabled,
     staleTime: 5 * 60_000, // el rol no cambia en sesión
   });

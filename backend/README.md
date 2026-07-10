@@ -62,5 +62,5 @@ uv run python -m scripts.seed --reset    # trunca todo y resiembra
 ```
 
 En Docker, el servicio `seed` del `docker-compose.yml` lo corre automáticamente
-la primera vez. Cuentas sembradas: `admin@gad.test`, `alice@gad.test`,
-`bob@gad.test`, `carol@gad.test`, `diana@gad.test` (password `Test1234`).
+la primera vez. Cuentas sembradas: `admin@example.com`, `alice@example.com`,
+`bob@example.com`, `carol@example.com`, `diana@example.com` (password `Test1234`).

@@ -2,11 +2,11 @@ import { test as base, expect, type Page, type APIRequestContext } from '@playwr
 
 /** Cuentas sembradas por backend/scripts/seed.py */
 export const SEED_ACCOUNTS = {
-  admin: { email: 'admin@gad.test', password: 'Test1234', name: 'Admin GAD' },
-  alice: { email: 'alice@gad.test', password: 'Test1234', name: 'Alice' },
-  bob: { email: 'bob@gad.test', password: 'Test1234', name: 'Bob' },
-  carol: { email: 'carol@gad.test', password: 'Test1234', name: 'Carol' },
-  diana: { email: 'diana@gad.test', password: 'Test1234', name: 'Diana' },
+  admin: { email: 'admin@example.com', password: 'Test1234', name: 'Admin GAD' },
+  alice: { email: 'alice@example.com', password: 'Test1234', name: 'Alice' },
+  bob: { email: 'bob@example.com', password: 'Test1234', name: 'Bob' },
+  carol: { email: 'carol@example.com', password: 'Test1234', name: 'Carol' },
+  diana: { email: 'diana@example.com', password: 'Test1234', name: 'Diana' },
 } as const;
 
 export type SeedUser = keyof typeof SEED_ACCOUNTS;

@@ -134,4 +134,5 @@ async def me_endpoint(current_user: Annotated[User, Depends(get_current_user)]) 
         display_name=current_user.display_name,
         verification_level=current_user.verification_level.value,
         reputation_score=current_user.reputation_score,
+        is_admin=current_user.is_admin,
     )

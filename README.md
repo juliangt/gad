@@ -270,11 +270,11 @@ El seed crea 5 usuarios y un dataset rico (planes, un match completado con rese√
 
 | Usuario | Email | Password | Rol |
 |---|---|---|---|
-| Admin | `admin@gad.test` | `Test1234` | admin |
-| Alice | `alice@gad.test` | `Test1234` | user |
-| Bob | `bob@gad.test` | `Test1234` | user |
-| Carol | `carol@gad.test` | `Test1234` | user |
-| Diana | `diana@gad.test` | `Test1234` | user |
+| Admin | `admin@example.com` | `Test1234` | admin |
+| Alice | `alice@example.com` | `Test1234` | user |
+| Bob | `bob@example.com` | `Test1234` | user |
+| Carol | `carol@example.com` | `Test1234` | user |
+| Diana | `diana@example.com` | `Test1234` | user |
 
 Para re-sembrar desde cero:
 

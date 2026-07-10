@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from gad.auth.service import register
 from gad.db import async_session_maker
@@ -32,7 +33,7 @@ from gad.plans.schemas import PlanIn, PlanLocationIn
 from gad.plans.service import create_plan
 from gad.schemas.auth import RegisterIn
 
-ADMIN_EMAIL = "admin@gad.test"
+ADMIN_EMAIL = "admin@example.com"
 TEST_PASSWORD = "Test1234"
 
 # Tablas a limpiar en --reset, en orden de FK inverso (hijas antes que padres).
@@ -63,7 +64,11 @@ RESET_TABLES = [
 # Helpers
 # --------------------------------------------------------------------------- #
 async def _get_user(session, email: str) -> User | None:
-    result = await session.execute(select(User).where(User.email == email))
+    # selectinload(preferences): evita lazy load síncrono (prohibido en async),
+    # que ocurriría al acceder user.preferences en _set_preferences.
+    result = await session.execute(
+        select(User).options(selectinload(User.preferences)).where(User.email == email)
+    )
     return result.scalar_one_or_none()
 
 
@@ -139,14 +144,14 @@ async def run_seed(reset: bool = False) -> None:
 
         # --- Usuarios ---
         print("Creando usuarios...")
-        admin = await _ensure_user(session, "admin@gad.test", "Admin GAD")
+        admin = await _ensure_user(session, "admin@example.com", "Admin GAD")
         admin.is_admin = True
         await session.commit()
 
-        alice = await _ensure_user(session, "alice@gad.test", "Alice")
-        bob = await _ensure_user(session, "bob@gad.test", "Bob")
-        carol = await _ensure_user(session, "carol@gad.test", "Carol")
-        diana = await _ensure_user(session, "diana@gad.test", "Diana")
+        alice = await _ensure_user(session, "alice@example.com", "Alice")
+        bob = await _ensure_user(session, "bob@example.com", "Bob")
+        carol = await _ensure_user(session, "carol@example.com", "Carol")
+        diana = await _ensure_user(session, "diana@example.com", "Diana")
 
         # --- Preferencias ---
         print("Configurando preferencias...")
@@ -413,7 +418,7 @@ async def run_seed(reset: bool = False) -> None:
         # --- Resumen ---
         print()
         print("✓ Seed completado")
-        print("  Usuarios: 5 (admin@gad.test, alice@, bob@, carol@, diana@)")
+        print("  Usuarios: 5 (admin@example.com, alice@, bob@, carol@, diana@)")
         print(f"  Planes: {len(plans_created)}")
         print(f"  Matches: {1 if match_created else 0}"
               + (" (completado)" if match_created else ""))

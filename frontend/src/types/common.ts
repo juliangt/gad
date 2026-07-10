@@ -42,4 +42,5 @@ export interface UserPublic {
   display_name: string;
   verification_level: string;
   reputation_score: number;
+  is_admin?: boolean;
 }

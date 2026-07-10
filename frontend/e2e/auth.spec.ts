@@ -32,7 +32,9 @@ test.describe('Auth — login / registro / guards', () => {
 
   test('login con email inexistente muestra error', async ({ page }) => {
     await page.goto('/login');
-    await page.getByLabel('Email').fill('nobody@nowhere.test');
+    // Email sintácticamente válido pero inexistente (zod rechazaría un TLD
+    // reservado como .test antes de enviar la request al backend).
+    await page.getByLabel('Email').fill('nobody@example.com');
     await page.getByLabel('Contraseña').fill(SEED_ACCOUNTS.alice.password);
     await page.getByRole('button', { name: 'Iniciar sesión' }).click();
 
