@@ -10,6 +10,7 @@ import { cn } from '../../../lib/utils';
 import { GpsIndicator } from '../components/GpsIndicator';
 import { PlanCard } from '../components/PlanCard';
 import { PlanFilters } from '../components/PlanFilters';
+import { AvailabilityToggle } from '../../availability/components/AvailabilityToggle';
 import { usePlans } from '../hooks';
 import { useUserLocation } from '../useUserLocation';
 import type { PlansQuery, PlanFiltersState } from '../types';
@@ -121,6 +122,9 @@ export default function ExplorePage() {
       <div className="absolute bottom-20 w-full z-40 flex flex-col pointer-events-none">
         <div className="h-8 bg-gradient-to-t from-white/10 to-transparent w-full" />
         <div className="px-4 pb-6 flex flex-col gap-3 pointer-events-auto max-h-[40vh] overflow-y-auto hide-scrollbar">
+          {gps.location && (
+            <AvailabilityToggle location={gps.location} radiusM={5000} />
+          )}
           <div className="flex items-center justify-between mb-1 px-1">
             <h2 className="text-sm font-semibold text-gray-800 drop-shadow-sm">
               Cerca de ti

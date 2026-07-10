@@ -9,7 +9,6 @@ import { ForgotPasswordPage } from './auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './auth/pages/ResetPasswordPage';
 import { ChangePasswordPage } from './auth/pages/ChangePasswordPage';
 import { ExploreStub } from './pages/ExploreStub';
-import { PublicShareStub } from './pages/PublicShareStub';
 import { Spinner } from './components/ui/Spinner';
 import ProfilePage from './features/users/pages/ProfilePage';
 import EditProfilePage from './features/users/pages/EditProfilePage';
@@ -23,6 +22,11 @@ const ApplicationsPage = lazy(() => import('./features/matching/pages/Applicatio
 const MyApplicationsPage = lazy(() => import('./features/matching/pages/MyApplicationsPage'));
 const MatchesPage = lazy(() => import('./features/matching/pages/MatchesPage'));
 const MatchDetailPage = lazy(() => import('./features/matching/pages/MatchDetailPage'));
+const TrustedContactsPage = lazy(() =>
+  import('./features/safety/pages/TrustedContactsPage'),
+);
+const SafetyPage = lazy(() => import('./features/safety/pages/SafetyPage'));
+const ShareLinkView = lazy(() => import('./features/safety/pages/ShareLinkView'));
 
 function PageSuspense({ children }: { children: ReactNode }) {
   return (
@@ -44,7 +48,7 @@ export const router = createBrowserRouter([
   { path: '/register', element: <RegisterPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset-password', element: <ResetPasswordPage /> },
-  { path: '/s/:token', element: <PublicShareStub /> },
+  { path: '/s/:token', element: <PageSuspense><ShareLinkView /></PageSuspense> },
 
   // Protegidas (RequireAuth)
   {
@@ -57,9 +61,11 @@ export const router = createBrowserRouter([
       { path: '/plans/:planId', element: <PageSuspense><PlanDetailPage /></PageSuspense> },
       { path: '/matches', element: <PageSuspense><MatchesPage /></PageSuspense> },
       { path: '/matches/:matchId', element: <PageSuspense><MatchDetailPage /></PageSuspense> },
+      { path: '/matches/:matchId/safety', element: <PageSuspense><SafetyPage /></PageSuspense> },
       { path: '/me', element: <ProfilePage /> },
       { path: '/me/edit', element: <EditProfilePage /> },
       { path: '/me/blocks', element: <BlockedUsersPage /> },
+      { path: '/me/trusted-contacts', element: <PageSuspense><TrustedContactsPage /></PageSuspense> },
       { path: '/me/applications', element: <PageSuspense><MyApplicationsPage /></PageSuspense> },
       { path: '/me/password', element: <ChangePasswordPage /> },
       { path: '/users/:userId', element: <UserPublicPage /> },
