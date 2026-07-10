@@ -1,7 +1,8 @@
 name: CI
 
 on:
-  # Solo se ejecuta bajo demanda, no en cada commit.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -65,3 +66,105 @@ jobs:
         env:
           NO_BUILD: "1"
         working-directory: backend
+
+  # Frontend: type-check, unit tests (Vitest) y build de producción.
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (tsc --noEmit)
+        run: npm run lint
+
+      - name: Unit tests (Vitest)
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  # E2E con Playwright contra el stack completo (docker compose prod-like).
+  # No bloqueante al principio (continue-on-error): el stack en CI puede tener
+  # flakiness hasta afinar timings de healthcheck/seed/proxy. Para endurecerlo,
+  # pasar continue-on-error a false y exigir el job en branch protection.
+  e2e:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+
+      - name: Bring up the stack
+        run: |
+          docker compose up --build -d
+          # Esperar a que nginx (web) responda y el proxy /api/health llegue al backend.
+          timeout 180 bash -c '
+            until curl -sf http://localhost:5173/ >/dev/null && \
+                  curl -sf http://localhost:5173/api/health >/dev/null; do
+              echo "Esperando stack..."
+              sleep 3
+            done
+          '
+          # Dar margen al servicio seed (one-shot) a poblar los datos.
+          timeout 120 bash -c '
+            until docker compose ps seed | grep -q "exited (0)"; do
+              echo "Esperando seed..."
+              sleep 3
+            done
+          '
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        working-directory: frontend
+        env:
+          E2E_BASE_URL: http://localhost:5173
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: frontend/test-results
+
+      - name: Stack logs on failure
+        if: failure()
+        run: docker compose logs
