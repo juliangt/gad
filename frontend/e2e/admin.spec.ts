@@ -10,11 +10,12 @@ test.describe('Admin — panel y guards', () => {
     await expect(page.getByRole('heading', { name: 'Panel de administración' })).toBeVisible();
 
     // Las tarjetas de métricas tienen labels estables (DashboardPage).
-    await expect(page.getByText('Usuarios', { exact: true })).toBeVisible();
-    await expect(page.getByText('Planes', { exact: true })).toBeVisible();
-    await expect(page.getByText('Matches', { exact: true })).toBeVisible();
+    const main = page.getByRole('main');
+    await expect(main.getByText('Usuarios', { exact: true })).toBeVisible();
+    await expect(main.getByText('Planes', { exact: true })).toBeVisible();
+    await expect(main.getByText('Matches', { exact: true })).toBeVisible();
     // "Reportes abiertos" también debería estar visible (aunque sea 0).
-    await expect(page.getByText('Reportes abiertos')).toBeVisible();
+    await expect(main.getByText('Reportes abiertos')).toBeVisible();
   });
 
   test('usuario no-admin es redirigido fuera del panel', async ({ page }) => {
