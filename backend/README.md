@@ -49,3 +49,18 @@ Para revocar:
 uv run python -m scripts.make_admin user@example.com --revoke
 ```
 
+## Datos de prueba (seed)
+
+El script `scripts/seed.py` puebla la BD con un dataset de prueba idempotente
+(usuarios, planes, postulaciones, un match completado con reseñas,
+notificaciones, contactos de confianza y availability).
+
+```bash
+cd backend
+uv run python -m scripts.seed            # siembra si no existe
+uv run python -m scripts.seed --reset    # trunca todo y resiembra
+```
+
+En Docker, el servicio `seed` del `docker-compose.yml` lo corre automáticamente
+la primera vez. Cuentas sembradas: `admin@gad.test`, `alice@gad.test`,
+`bob@gad.test`, `carol@gad.test`, `diana@gad.test` (password `Test1234`).

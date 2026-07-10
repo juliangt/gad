@@ -45,6 +45,36 @@ services:
         condition: service_healthy
     volumes:
       - ./backend/src:/app/src
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  seed:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-gad}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-gad}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET requerido}
+      RATE_LIMIT_ENABLED: "false"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: "no"
+    command: ["python", "-m", "scripts.seed"]
 
 volumes:
   gad_pgdata:

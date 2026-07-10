@@ -1,0 +1,37 @@
+# Override para entorno de desarrollo.
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Cambios respecto al base (prod-like):
+#   - `web` pasa de nginx (estáticos) al dev server de Vite con HMR. El código
+#     del frontend se monta como bind mount para que los cambios se vean en el
+#     navegador sin reconstruir la imagen. El proxy de Vite (`vite.config.ts`)
+#     reenvía /api y /ws al servicio `api` dentro de la red de compose.
+#   - `api` arranca uvicorn con --reload (recarga en cada cambio del código del
+#     backend, ya montado en el base). Usa `entrypoint.dev.sh`, que además corre
+#     las migraciones de Alembic al levantar (igual que el entrypoint de prod),
+#     así no hace falta migrar a mano la primera vez.
+#
+# Nota sobre `!override`: docker-compose, por defecto, *concatena* las listas
+# (ports, volumes...) del base y del override. Sin `!override`, el `5173:5173`
+# del override se añadiría al `5173:80` del base, dejando dos mapeos.
+# `!override` reemplaza la lista entera (requiere compose >= 2.24).
+services:
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes: !override
+      - ./frontend:/app
+      - /app/node_modules
+    ports: !override
+      - "5173:5173"
+    environment:
+      VITE_PROXY_TARGET: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    command: ["./entrypoint.dev.sh"]

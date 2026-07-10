@@ -1,0 +1,12 @@
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Solo copia manifests para instalar deps. El código se monta como volumen
+# en el override de compose (bind mount ./frontend:/app) para HMR.
+COPY package.json package-lock.json ./
+RUN npm ci
+
+EXPOSE 5173
+
+CMD ["npm", "run", "dev"]
