@@ -8,6 +8,7 @@ import { ErrorState } from '../../../components/ui/ErrorState';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { PlanDetailSheet } from '../components/PlanDetailSheet';
 import { EditPlanSheet } from '../components/EditPlanSheet';
+import { ApplySheet } from '../../matching/components/ApplySheet';
 import { usePlan, useCancelPlan } from '../hooks';
 import { useUserLocation } from '../useUserLocation';
 import { useAuth } from '../../../auth/useAuth';
@@ -23,6 +24,7 @@ export default function PlanDetailPage() {
   const cancelPlan = useCancelPlan();
   const [showEdit, setShowEdit] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [showApply, setShowApply] = useState(false);
 
   const apiErr = error as ApiError | null;
   const isNotFound = apiErr?.status === 404 || apiErr?.code === 'not_found';
@@ -84,7 +86,7 @@ export default function PlanDetailPage() {
         onEdit={() => setShowEdit(true)}
         onCancel={() => setConfirmCancel(true)}
         onApply={() => {
-          // Se conecta en F4; dejamos el handler listo.
+          if (!isHost) setShowApply(true);
         }}
       />
 
@@ -94,6 +96,17 @@ export default function PlanDetailPage() {
           onClose={() => setShowEdit(false)}
           onSaved={() => {
             // useUpdatePlan ya invalida ['plans', planId]; el refetch es automático.
+          }}
+        />
+      )}
+
+      {!isHost && showApply && (
+        <ApplySheet
+          planId={plan.id}
+          planTitle={plan.title}
+          onClose={() => setShowApply(false)}
+          onApplied={() => {
+            // useApply ya invalida ['my-applications'] y toastea.
           }}
         />
       )}
