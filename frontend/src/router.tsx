@@ -19,6 +19,10 @@ import UserPublicPage from './features/users/pages/UserPublicPage';
 const ExplorePage = lazy(() => import('./features/plans/pages/ExplorePage'));
 const CreatePlanPage = lazy(() => import('./features/plans/pages/CreatePlanPage'));
 const PlanDetailPage = lazy(() => import('./features/plans/pages/PlanDetailPage'));
+const ApplicationsPage = lazy(() => import('./features/matching/pages/ApplicationsPage'));
+const MyApplicationsPage = lazy(() => import('./features/matching/pages/MyApplicationsPage'));
+const MatchesPage = lazy(() => import('./features/matching/pages/MatchesPage'));
+const MatchDetailPage = lazy(() => import('./features/matching/pages/MatchDetailPage'));
 
 function PageSuspense({ children }: { children: ReactNode }) {
   return (
@@ -49,10 +53,14 @@ export const router = createBrowserRouter([
       { path: '/', element: <Navigate to="/explore" replace /> },
       { path: '/explore', element: <PageSuspense><ExplorePage /></PageSuspense> },
       { path: '/plans/new', element: <PageSuspense><CreatePlanPage /></PageSuspense> },
+      { path: '/plans/:planId/applications', element: <PageSuspense><ApplicationsPage /></PageSuspense> },
       { path: '/plans/:planId', element: <PageSuspense><PlanDetailPage /></PageSuspense> },
+      { path: '/matches', element: <PageSuspense><MatchesPage /></PageSuspense> },
+      { path: '/matches/:matchId', element: <PageSuspense><MatchDetailPage /></PageSuspense> },
       { path: '/me', element: <ProfilePage /> },
       { path: '/me/edit', element: <EditProfilePage /> },
       { path: '/me/blocks', element: <BlockedUsersPage /> },
+      { path: '/me/applications', element: <PageSuspense><MyApplicationsPage /></PageSuspense> },
       { path: '/me/password', element: <ChangePasswordPage /> },
       { path: '/users/:userId', element: <UserPublicPage /> },
       // El resto de rutas protegidas se añaden en F2-F7.
