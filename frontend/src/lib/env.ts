@@ -9,7 +9,8 @@ function boolFlag(value: unknown, defaultValue: boolean): boolean {
 }
 
 export const ENV = {
-  apiUrl: import.meta.env.VITE_API_URL ?? 'http://localhost:8000',
+  // Vacío => prefijo relativo /api (proxy Vite/nginx). Ver api/client.ts.
+  apiUrl: (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '') || '/api',
   wsUrl: import.meta.env.VITE_WS_URL ?? 'ws://localhost:8000',
   oauthGoogleClientId: import.meta.env.VITE_OAUTH_GOOGLE_CLIENT_ID ?? '',
   enablePush: boolFlag(import.meta.env.VITE_ENABLE_PUSH, true),

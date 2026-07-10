@@ -20,22 +20,36 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | None = None
 
 
+def _has_column(table: str, column: str) -> bool:
+    """True si la columna ya existe (la migración inicial create_all la pudo crear)."""
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    return column in {c["name"] for c in inspector.get_columns(table)}
+
+
 def upgrade() -> None:
     userstatus = sa.Enum("active", "suspended", "deleted", name="userstatus")
     userstatus.create(op.get_bind(), checkfirst=True)
-    op.add_column(
-        "users",
-        sa.Column(
-            "status",
-            userstatus,
-            nullable=False,
-            server_default="active",
-        ),
-    )
-    op.add_column(
-        "users",
-        sa.Column("password_changed_at", sa.DateTime(timezone=True), nullable=True),
-    )
+
+    # 0001 crea el schema con create_all sobre los modelos actuales, que ya
+    # incluyen estas columnas. Guardamos idempotencia para DBs nuevas.
+    if not _has_column("users", "status"):
+        op.add_column(
+            "users",
+            sa.Column(
+                "status",
+                userstatus,
+                nullable=False,
+                server_default="active",
+            ),
+        )
+    if not _has_column("users", "password_changed_at"):
+        op.add_column(
+            "users",
+            sa.Column(
+                "password_changed_at", sa.DateTime(timezone=True), nullable=True
+            ),
+        )
 
 
 def downgrade() -> None:

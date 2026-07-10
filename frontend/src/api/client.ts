@@ -1,9 +1,17 @@
 import type { ErrorOut } from '../types/common';
 import { ApiError } from './errors';
 
-/** Base URL del backend. En dev el proxy Vite reescribe /api/* → backend. */
-const BASE_URL =
-  (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '');
+/**
+ * Base URL del backend.
+ *
+ * - Si VITE_API_URL tiene un valor absoluto (p.ej. http://localhost:8000), las
+ *   llamadas van directas al backend (cross-origin; requiere CORS).
+ * - Si está vacío (build de Docker, mismo origen), usamos el prefijo relativo
+ *   `/api` que enrutan tanto el proxy de Vite en dev como nginx en prod hacia
+ *   el servicio `api`. Así `/auth/login` → `/api/auth/login`.
+ */
+const RAW_API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
+const BASE_URL = RAW_API_URL === '' ? '/api' : RAW_API_URL;
 
 /** Endpoints que NO llevan Bearer ni pasan por el interceptor de 401. */
 const PUBLIC_PATHS = new Set<string>([

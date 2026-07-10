@@ -68,10 +68,10 @@
 
 **`backend/scripts/seed.py`** (nuevo, patrón de `make_admin.py`)
 - Async, `gad.db.async_session_maker`.
-- **Idempotente**: comprueba si `admin@gad.test` existe antes de insertar. Flag `--reset` opcional (truncate en orden FK inverso).
+- **Idempotente**: comprueba si `admin@example.com` existe antes de insertar. Flag `--reset` opcional (truncate en orden FK inverso).
 - Crea vía funciones de servicio:
-  - Usuarios: `admin@gad.test`, `alice@`, `bob@`, `carol@`, `diana@` (password `Test1234`).
-  - Promueve admin sobre `admin@gad.test`.
+  - Usuarios: `admin@example.com`, `alice@`, `bob@`, `carol@`, `diana@` (password `Test1234`).
+  - Promueve admin sobre `admin@example.com`.
   - Preferencias variadas por usuario.
   - Planes: 4-5 con `create_plan` (coffee, walk, food, drinks; `now`/`scheduled`; ubicaciones CABA).
   - Postulaciones + aceptar 1 → `Match` + participantes.
@@ -109,7 +109,7 @@
 ### Fase 2 — Seed
 4. `backend/scripts/seed.py` (idempotente, dataset rico).
 5. Servicio `seed` en `docker-compose.yml`.
-6. **Verificación**: `docker compose up --build seed` → log con cuentas; login con `admin@gad.test/Test1234`; datos visibles en explore/perfil.
+6. **Verificación**: `docker compose up --build seed` → log con cuentas; login con `admin@example.com/Test1234`; datos visibles en explore/perfil.
 
 ### Fase 3 — Override dev con HMR
 7. `frontend/Dockerfile.dev`.

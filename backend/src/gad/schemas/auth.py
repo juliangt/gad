@@ -51,6 +51,7 @@ class UserPublic(BaseModel):
     display_name: str
     verification_level: str
     reputation_score: float
+    is_admin: bool = False
 
 
 class VerifyEmailIn(BaseModel):
