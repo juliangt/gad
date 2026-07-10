@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.admin.dependencies import require_admin
-from gad.admin.schemas import AdminStatsOut, AdminUserOut, ReportStatusUpdate
+from gad.admin.schemas import AdminStatsOut, AdminUserOut, FlaggedReviewOut, ReportStatusUpdate
 from gad.admin.service import (
     ban_user,
     force_cancel_plan,
@@ -142,31 +142,33 @@ async def force_cancel_plan_endpoint(
     return {"message": "Plan cancelado por moderación"}
 
 
-@router.get("/reviews", response_model=PaginatedOut[dict])
+def _review_to_flagged_out(r) -> FlaggedReviewOut:
+    return FlaggedReviewOut(
+        id=r.id,
+        match_id=r.match_id,
+        reviewer_id=r.reviewer_id,
+        reviewee_id=r.reviewee_id,
+        rating=r.rating,
+        comment=r.comment,
+        flag=r.flag,
+        created_at=r.created_at,
+    )
+
+
+@router.get("/reviews", response_model=PaginatedOut[FlaggedReviewOut])
 async def list_flagged_reviews_endpoint(
     admin: Annotated[User, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
     limit: int = Query(default=50, ge=1, le=100),
     before: datetime | None = Query(default=None),
-) -> PaginatedOut[dict]:
+) -> PaginatedOut[FlaggedReviewOut]:
     from gad.admin.service import list_flagged_reviews
 
     reviews = await list_flagged_reviews(session, limit=limit, before=before)
-    items = [
-        {
-            "id": str(r.id),
-            "match_id": str(r.match_id),
-            "reviewer_id": str(r.reviewer_id),
-            "reviewee_id": str(r.reviewee_id),
-            "rating": r.rating,
-            "comment": r.comment,
-            "flag": r.flag.value if r.flag else None,
-            "created_at": r.created_at.isoformat(),
-        }
-        for r in reviews
-    ]
-    next_cursor = items[-1]["created_at"] if len(items) == limit and items else None
-    return PaginatedOut[dict](items=items, next_cursor=next_cursor)
+    items = [_review_to_flagged_out(r) for r in reviews]
+    next_cursor = items[-1].created_at.isoformat() if len(items) == limit and items else None
+    return PaginatedOut[FlaggedReviewOut](items=items, next_cursor=next_cursor)
+
 
 
 @router.delete("/reviews/{review_id}")

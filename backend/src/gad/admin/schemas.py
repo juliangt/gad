@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from gad.models.enums import UserStatus
+from gad.models.enums import ReviewFlag, UserStatus
 
 
 class AdminStatsOut(BaseModel):
@@ -30,3 +30,15 @@ class AdminUserOut(BaseModel):
 
 class UserStatusUpdate(BaseModel):
     status: UserStatus
+
+
+class FlaggedReviewOut(BaseModel):
+    id: UUID
+    match_id: UUID
+    reviewer_id: UUID
+    reviewee_id: UUID
+    rating: int
+    comment: str | None = None
+    flag: ReviewFlag | None = None
+    created_at: datetime
+

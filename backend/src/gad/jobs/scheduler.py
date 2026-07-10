@@ -1,5 +1,4 @@
 # backend/src/gad/jobs/scheduler.py
-import asyncio
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 

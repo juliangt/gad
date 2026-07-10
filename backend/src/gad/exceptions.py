@@ -15,9 +15,10 @@ class AuthError(GADError):
     code = "auth_error"
 
 
-class ForbiddenError(AuthError):
+class ForbiddenError(GADError):
     status_code = 403
     code = "forbidden"
+
 
 
 class InvalidCredentialsError(AuthError):
