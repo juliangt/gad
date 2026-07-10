@@ -21,14 +21,14 @@ def setup_scheduler() -> AsyncIOScheduler:
         return _scheduler
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
-        lambda: asyncio.create_task(expire_plans()),
+        expire_plans,
         trigger="interval",
         minutes=5,
         id="expire_plans",
         replace_existing=True,
     )
     scheduler.add_job(
-        lambda: asyncio.create_task(_run_expire_availability()),
+        _run_expire_availability,
         trigger="interval",
         minutes=5,
         id="expire_availability",
