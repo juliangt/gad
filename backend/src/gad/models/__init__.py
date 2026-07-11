@@ -11,11 +11,13 @@ from gad.models.enums import (
     MatchRole,
     MatchStatus,
     NotificationType,
+    OfferRedemption,
     PlanMode,
     PlanStatus,
     ReviewFlag,
     SafetyEventType,
     VerificationLevel,
+    VenueStatus,
 )
 from gad.models.match import Match, MatchParticipant, Message
 from gad.models.plan import Plan, PlanApplication
@@ -24,6 +26,7 @@ from gad.models.review import Review
 from gad.models.safety import SafetyEvent, SafetySession, TrustedContact
 from gad.models.social import Block, Notification, PushSubscription
 from gad.models.user import User, UserPreferences
+from gad.models.venue import Venue, VenueOffer
 
 __all__ = [
     "Base",
@@ -37,11 +40,13 @@ __all__ = [
     "MatchRole",
     "MatchStatus",
     "NotificationType",
+    "OfferRedemption",
     "PlanMode",
     "PlanStatus",
     "ReviewFlag",
     "SafetyEventType",
     "VerificationLevel",
+    "VenueStatus",
     "Availability",
     "Block",
     "Match",
@@ -58,4 +63,6 @@ __all__ = [
     "TrustedContact",
     "User",
     "UserPreferences",
+    "Venue",
+    "VenueOffer",
 ]
