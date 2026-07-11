@@ -10,6 +10,7 @@ describe('planInSchema', () => {
     window_minutes: 120,
     max_participants: 1,
     title: 'Café de especialidad',
+    title_suffix: '',
     description: 'Charlar un rato',
     location: { lat: -34.588, lng: -58.431, label: 'Palermo' },
     search_radius_m: 2000,
@@ -108,5 +109,34 @@ describe('planUpdateInSchema', () => {
 
   it('rechaza scheduled_at inválido', () => {
     expect(() => planUpdateInSchema.parse({ scheduled_at: 'no-iso' })).toThrow();
+  });
+});
+
+describe('planInSchema — title_suffix', () => {
+  const validBase = {
+    activity_type: 'coffee',
+    mode: 'now',
+    scheduled_at: null,
+    window_minutes: 120,
+    max_participants: 1,
+    title: 'Café',
+    description: null,
+    location: { lat: -34.59, lng: -58.43, label: 'Palermo' },
+    search_radius_m: 1000,
+  };
+
+  it('acepta title_suffix vacío con default ""', () => {
+    const parsed = planInSchema.parse({ ...validBase });
+    expect(parsed.title_suffix).toBe('');
+  });
+
+  it('acepta title_suffix de hasta 32 caracteres', () => {
+    const parsed = planInSchema.parse({ ...validBase, title_suffix: 'a'.repeat(32) });
+    expect(parsed.title_suffix).toHaveLength(32);
+  });
+
+  it('rechaza title_suffix de más de 32 caracteres', () => {
+    const result = planInSchema.safeParse({ ...validBase, title_suffix: 'a'.repeat(33) });
+    expect(result.success).toBe(false);
   });
 });
