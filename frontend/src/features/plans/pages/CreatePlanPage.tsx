@@ -43,7 +43,7 @@ export default function CreatePlanPage() {
         // Coords por defecto: las del usuario si ya hay, si no centro de CABA.
         lat: gps.location?.[0] ?? -34.5900,
         lng: gps.location?.[1] ?? -58.4300,
-        label: '',
+        label: '—',
       },
       search_radius_m: PLAN_DEFAULTS.search_radius_m,
     }),
