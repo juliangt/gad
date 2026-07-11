@@ -34,10 +34,10 @@ export const GROUP_SIZE_OPTIONS: { value: GroupSizePreference; label: string }[]
 ];
 
 export const GENDER_PREFERENCE_OPTIONS: { value: GenderPreference; label: string }[] = [
-  { value: 'any', label: 'Cualquiera' },
-  { value: 'same', label: 'Mismo género' },
-  { value: 'mixed', label: 'Mixto' },
-  { value: 'specific', label: 'Específico' },
+  { value: 'same', label: 'Hombre' },
+  { value: 'mixed', label: 'Mujer' },
+  { value: 'specific', label: 'No binario' },
+  { value: 'any', label: 'Indistinto' },
 ];
 
 export const VERIFICATION_LABELS: Record<VerificationLevel, string> = {

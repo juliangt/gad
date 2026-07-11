@@ -2,7 +2,6 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { useMe, useUpdatePreferences } from '../hooks';
 import { preferencesSchema, type PreferencesFormValues } from '../schemas';
 import { ActivityTypeChips } from './ActivityTypeChips';
@@ -12,8 +11,6 @@ import { ParticipantPicker } from '../../plans/components/ParticipantPicker';
 import { RadiusPicker } from '../../plans/components/RadiusPicker';
 import { ValidityPicker } from '../../plans/components/ValidityPicker';
 
-const selectClass =
-  'w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500';
 const sectionLabelClass = 'text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block';
 
 /**
@@ -141,33 +138,79 @@ export function PreferencesForm() {
       </div>
 
       <div>
-        <span className={sectionLabelClass}>Rango de edad</span>
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <label htmlFor="age_range_min" className="sr-only">
-              Edad mínima
-            </label>
-            <Input
-              id="age_range_min"
-              type="number"
-              min={18}
-              max={99}
-              invalid={Boolean(errors.age_range_min)}
-              {...register('age_range_min', { valueAsNumber: true })}
+        <span className={sectionLabelClass}>Rango de edad: {watch('age_range_min')} a {watch('age_range_max')} años</span>
+        <div className="relative pt-4 pb-2 px-2">
+          {/* Slider track background */}
+          <div className="h-2 bg-gray-100 rounded-full w-full absolute left-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+          
+          {/* Active range fill track */}
+          <Controller
+            control={control}
+            name="age_range_min"
+            render={({ field: minField }) => {
+              const maxVal = watch('age_range_max') ?? 99;
+              const minVal = minField.value ?? 18;
+              const leftPercent = ((minVal - 18) / (99 - 18)) * 100;
+              const rightPercent = ((maxVal - 18) / (99 - 18)) * 100;
+              
+              return (
+                <div
+                  className="h-2 bg-brand-500 rounded-full absolute top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{
+                    left: `${leftPercent}%`,
+                    width: `${rightPercent - leftPercent}%`,
+                  }}
+                />
+              );
+            }}
+          />
+
+          {/* Overlaid range inputs */}
+          <div className="relative w-full h-2 flex items-center">
+            <Controller
+              control={control}
+              name="age_range_min"
+              render={({ field: minField }) => {
+                const minVal = minField.value ?? 18;
+                const maxVal = watch('age_range_max') ?? 99;
+                const isNearMax = minVal > 90;
+                return (
+                  <input
+                    type="range"
+                    min={18}
+                    max={99}
+                    value={minVal}
+                    onChange={(e) => {
+                      const val = Math.min(Number(e.target.value), maxVal - 1);
+                      minField.onChange(val);
+                    }}
+                    style={{ zIndex: isNearMax ? 30 : 10 }}
+                    className="absolute w-full top-0 h-2 pointer-events-none appearance-none bg-transparent cursor-pointer [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-brand-500 [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-brand-500 [&::-moz-range-thumb]:shadow-md"
+                  />
+                );
+              }}
             />
-          </div>
-          <span className="text-gray-400">–</span>
-          <div className="flex-1">
-            <label htmlFor="age_range_max" className="sr-only">
-              Edad máxima
-            </label>
-            <Input
-              id="age_range_max"
-              type="number"
-              min={18}
-              max={99}
-              invalid={Boolean(errors.age_range_max)}
-              {...register('age_range_max', { valueAsNumber: true })}
+            <Controller
+              control={control}
+              name="age_range_max"
+              render={({ field: maxField }) => {
+                const minVal = watch('age_range_min') ?? 18;
+                const maxVal = maxField.value ?? 99;
+                return (
+                  <input
+                    type="range"
+                    min={18}
+                    max={99}
+                    value={maxVal}
+                    onChange={(e) => {
+                      const val = Math.max(Number(e.target.value), minVal + 1);
+                      maxField.onChange(val);
+                    }}
+                    style={{ zIndex: 20 }}
+                    className="absolute w-full top-0 h-2 pointer-events-none appearance-none bg-transparent cursor-pointer [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-brand-500 [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-brand-500 [&::-moz-range-thumb]:shadow-md"
+                  />
+                );
+              }}
             />
           </div>
         </div>
@@ -179,16 +222,34 @@ export function PreferencesForm() {
       </div>
 
       <div>
-        <label htmlFor="gender_preference" className={sectionLabelClass}>
+        <label className={sectionLabelClass}>
           Preferencia de género
         </label>
-        <select id="gender_preference" className={selectClass} {...register('gender_preference')}>
-          {GENDER_PREFERENCE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <Controller
+          control={control}
+          name="gender_preference"
+          render={({ field }) => (
+            <div className="grid grid-cols-4 gap-2">
+              {GENDER_PREFERENCE_OPTIONS.map((o) => {
+                const isSelected = field.value === o.value;
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => field.onChange(o.value)}
+                    className={`flex items-center justify-center px-2 py-3 rounded-xl border-2 font-medium text-xs transition-all ${
+                      isSelected
+                        ? 'border-brand-500 bg-brand-50/50 text-brand-600'
+                        : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        />
         {errors.gender_preference && (
           <p className="text-xs text-red-600 mt-1">{errors.gender_preference.message}</p>
         )}
