@@ -1,5 +1,6 @@
 // frontend/src/features/plans/hooks.ts
 import {
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -11,6 +12,7 @@ import {
   PLAN_CREATE_RATE_LIMIT_PER_HOUR,
 } from './constants';
 import type {
+  MyPlansPage,
   PlanIn,
   PlanListItem,
   PlanOut,
@@ -48,6 +50,21 @@ export function usePlans(
     enabled: query !== null,
     staleTime: 30_000,
     ...options,
+  });
+}
+
+/** GET /me/plans — mis planes creados, paginado por cursor. */
+export function useMyPlans() {
+  return useInfiniteQuery({
+    queryKey: ['me', 'plans'],
+    queryFn: ({ pageParam }: { pageParam?: string }) => {
+      const query: Record<string, number | string> = { limit: 50 };
+      if (pageParam) query.before = pageParam;
+      return apiGet<MyPlansPage>('/me/plans', { query });
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage: MyPlansPage) => lastPage.next_cursor ?? undefined,
+    staleTime: 30_000,
   });
 }
 
@@ -99,15 +116,16 @@ export function useUpdatePlan(planId: string) {
   });
 }
 
-/** DELETE /plans/{id} — cancela (host). */
+/** DELETE /plans/{id} — cancela y oculta el plan del host (soft-delete). */
 export function useCancelPlan() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (planId: string) => apiDelete<PlanOut>(`/plans/${planId}`),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['me', 'plans'] });
       qc.invalidateQueries({ queryKey: ['plans'] });
-      toast.success('Plan cancelado');
+      toast.success('Plan eliminado');
     },
-    onError: () => toast.error('No se pudo cancelar el plan.'),
+    onError: () => toast.error('No se pudo eliminar el plan.'),
   });
 }
