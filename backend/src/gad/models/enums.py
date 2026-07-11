@@ -99,3 +99,16 @@ class UserStatus(str, enum.Enum):
     active = "active"
     suspended = "suspended"
     deleted = "deleted"
+
+
+class VenueStatus(str, enum.Enum):
+    pending = "pending"
+    active = "active"
+    paused = "paused"
+    revoked = "revoked"
+
+
+class OfferRedemption(str, enum.Enum):
+    code = "code"
+    qr = "qr"
+    mention = "mention"

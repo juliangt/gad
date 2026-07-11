@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from gad.models.enums import ReviewFlag, UserStatus
+from gad.models.enums import ActivityType, OfferRedemption, ReviewFlag, UserStatus, VenueStatus
 
 
 class AdminStatsOut(BaseModel):
@@ -41,4 +41,68 @@ class FlaggedReviewOut(BaseModel):
     comment: str | None = None
     flag: ReviewFlag | None = None
     created_at: datetime
+
+
+class VenueCreateIn(BaseModel):
+    name: str
+    category: ActivityType
+    address: str
+    lat: float
+    lng: float
+    owner_name: str
+    owner_email: str
+    owner_phone: str | None = None
+
+
+class VenueUpdateIn(BaseModel):
+    name: str | None = None
+    category: ActivityType | None = None
+    address: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    owner_name: str | None = None
+    owner_email: str | None = None
+    owner_phone: str | None = None
+
+
+class VenueOfferCreateIn(BaseModel):
+    title: str
+    description: str
+    redemption_method: OfferRedemption
+    valid_from: datetime
+    valid_until: datetime
+
+
+class VenueOfferUpdateIn(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    redemption_method: OfferRedemption | None = None
+    valid_from: datetime | None = None
+    valid_until: datetime | None = None
+    active: bool | None = None
+
+
+class VenueOfferAdminOut(BaseModel):
+    id: UUID
+    title: str
+    description: str
+    redemption_method: OfferRedemption
+    valid_from: datetime
+    valid_until: datetime
+    active: bool
+
+
+class VenueAdminOut(BaseModel):
+    id: UUID
+    name: str
+    category: ActivityType
+    address: str
+    lat: float
+    lng: float
+    status: VenueStatus
+    owner_name: str
+    owner_email: str
+    owner_phone: str | None = None
+    created_at: datetime
+    offers: list[VenueOfferAdminOut] = []
 

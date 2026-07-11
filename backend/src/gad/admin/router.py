@@ -7,7 +7,18 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.admin.dependencies import require_admin
-from gad.admin.schemas import AdminStatsOut, AdminUserOut, FlaggedReviewOut, ReportStatusUpdate
+from gad.admin.schemas import (
+    AdminStatsOut,
+    AdminUserOut,
+    FlaggedReviewOut,
+    ReportStatusUpdate,
+    VenueAdminOut,
+    VenueCreateIn,
+    VenueOfferAdminOut,
+    VenueOfferCreateIn,
+    VenueOfferUpdateIn,
+    VenueUpdateIn,
+)
 from gad.admin.service import (
     ban_user,
     force_cancel_plan,
@@ -21,6 +32,18 @@ from gad.models.user import User
 from gad.reports.schemas import ReportOut
 from gad.schemas.pagination import PaginatedOut
 from gad.users.service import set_user_status
+from gad.venues.admin_service import (
+    approve_venue,
+    create_offer,
+    create_venue,
+    delete_offer,
+    get_venue_admin,
+    list_venues_admin,
+    pause_venue,
+    revoke_venue,
+    update_offer,
+    update_venue,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -181,3 +204,157 @@ async def delete_review_admin_endpoint(
 
     await delete_review_admin(session, review_id)
     return {"message": "Reseña eliminada por moderación"}
+
+
+# ---------- Venues (sponsored) ----------
+
+
+def _offer_to_admin_out(offer) -> VenueOfferAdminOut:
+    return VenueOfferAdminOut(
+        id=offer.id,
+        title=offer.title,
+        description=offer.description,
+        redemption_method=offer.redemption_method,
+        valid_from=offer.valid_from,
+        valid_until=offer.valid_until,
+        active=offer.active,
+    )
+
+
+async def _venue_to_admin_out(session: AsyncSession, venue) -> VenueAdminOut:
+    from geoalchemy2 import Geometry
+    from sqlalchemy import cast, func, select
+
+    from gad.models.venue import Venue as VenueModel
+
+    loc_col = cast(VenueModel.location, Geometry)
+    stmt = select(
+        func.ST_Y(loc_col).label("lat"),
+        func.ST_X(loc_col).label("lng"),
+    ).where(VenueModel.id == venue.id)
+    result = await session.execute(stmt)
+    lat, lng = result.one()
+    return VenueAdminOut(
+        id=venue.id,
+        name=venue.name,
+        category=venue.category,
+        address=venue.address,
+        lat=lat,
+        lng=lng,
+        status=venue.status,
+        owner_name=venue.owner_name,
+        owner_email=venue.owner_email,
+        owner_phone=venue.owner_phone,
+        created_at=venue.created_at,
+        offers=[_offer_to_admin_out(o) for o in venue.offers],
+    )
+
+
+@router.post("/venues", response_model=VenueAdminOut, status_code=200)
+async def create_venue_endpoint(
+    data: VenueCreateIn,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> VenueAdminOut:
+    venue = await create_venue(session, data)
+    return await _venue_to_admin_out(session, venue)
+
+
+@router.get("/venues", response_model=list[VenueAdminOut])
+async def list_venues_endpoint(
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    status: str | None = None,
+    limit: int = Query(default=50, ge=1, le=100),
+) -> list[VenueAdminOut]:
+    venues = await list_venues_admin(session, status=status, limit=limit)
+    return [await _venue_to_admin_out(session, v) for v in venues]
+
+
+@router.get("/venues/{venue_id}", response_model=VenueAdminOut)
+async def get_venue_endpoint(
+    venue_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> VenueAdminOut:
+    venue = await get_venue_admin(session, venue_id)
+    return await _venue_to_admin_out(session, venue)
+
+
+@router.patch("/venues/{venue_id}", response_model=VenueAdminOut)
+async def update_venue_endpoint(
+    venue_id: UUID,
+    data: VenueUpdateIn,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> VenueAdminOut:
+    venue = await get_venue_admin(session, venue_id)
+    venue = await update_venue(session, venue, data)
+    return await _venue_to_admin_out(session, venue)
+
+
+@router.post("/venues/{venue_id}/approve", response_model=VenueAdminOut)
+async def approve_venue_endpoint(
+    venue_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> VenueAdminOut:
+    venue = await get_venue_admin(session, venue_id)
+    venue = await approve_venue(session, venue)
+    return await _venue_to_admin_out(session, venue)
+
+
+@router.post("/venues/{venue_id}/pause", response_model=VenueAdminOut)
+async def pause_venue_endpoint(
+    venue_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> VenueAdminOut:
+    venue = await get_venue_admin(session, venue_id)
+    venue = await pause_venue(session, venue)
+    return await _venue_to_admin_out(session, venue)
+
+
+@router.post("/venues/{venue_id}/revoke", response_model=VenueAdminOut)
+async def revoke_venue_endpoint(
+    venue_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> VenueAdminOut:
+    venue = await get_venue_admin(session, venue_id)
+    venue = await revoke_venue(session, venue)
+    return await _venue_to_admin_out(session, venue)
+
+
+@router.post("/venues/{venue_id}/offers", response_model=VenueOfferAdminOut)
+async def create_offer_endpoint(
+    venue_id: UUID,
+    data: VenueOfferCreateIn,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> VenueOfferAdminOut:
+    offer = await create_offer(session, venue_id, data)
+    return _offer_to_admin_out(offer)
+
+
+@router.patch("/venues/{venue_id}/offers/{offer_id}", response_model=VenueOfferAdminOut)
+async def update_offer_endpoint(
+    venue_id: UUID,
+    offer_id: UUID,
+    data: VenueOfferUpdateIn,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> VenueOfferAdminOut:
+    offer = await update_offer(session, venue_id, offer_id, data)
+    return _offer_to_admin_out(offer)
+
+
+@router.delete("/venues/{venue_id}/offers/{offer_id}")
+async def delete_offer_endpoint(
+    venue_id: UUID,
+    offer_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, str]:
+    await delete_offer(session, venue_id, offer_id)
+    return {"message": "Oferta eliminada"}

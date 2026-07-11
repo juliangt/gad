@@ -32,6 +32,7 @@ from gad.reviews.router import router as reviews_router
 from gad.safety.public_router import router as safety_public_router
 from gad.safety.router import router as safety_router
 from gad.users.router import router as users_router
+from gad.venues.router import router as venues_router
 
 
 @asynccontextmanager
@@ -91,6 +92,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(plans_router)
+    app.include_router(venues_router)
     app.include_router(matching_router)
     app.include_router(chat_router)
     app.include_router(chat_rest_router)

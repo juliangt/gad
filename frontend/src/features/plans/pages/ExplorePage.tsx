@@ -12,6 +12,7 @@ import { PlanCard } from '../components/PlanCard';
 import { PlanFilters } from '../components/PlanFilters';
 import { AvailabilityToggle } from '../../availability/components/AvailabilityToggle';
 import { usePlans } from '../hooks';
+import { useVenues } from '../../venues/hooks';
 import { useUserLocation } from '../useUserLocation';
 import type { PlansQuery, PlanFiltersState } from '../types';
 
@@ -49,6 +50,29 @@ export default function ExplorePage() {
 
   const { data: plans, isLoading, isError, error, refetch } = usePlans(plansQuery);
 
+  const venuesQuery = gps.location
+    ? { lat: gps.location[0], lng: gps.location[1], radius: 5000 }
+    : null;
+  const { data: venuesData } = useVenues(venuesQuery);
+
+  const venueMarkers = useMemo(
+    () =>
+      (venuesData?.items ?? []).map((v) => ({
+        id: v.id,
+        lat: v.lat,
+        lng: v.lng,
+        venue: {
+          name: v.name,
+          offers: v.offers.map((o) => ({
+            title: o.title,
+            description: o.description,
+            redemption_method: o.redemption_method,
+          })),
+        },
+      })),
+    [venuesData],
+  );
+
   const planMarkers = useMemo(
     () =>
       (plans ?? []).map((p) => ({
@@ -64,6 +88,7 @@ export default function ExplorePage() {
       <MapBackground
         userLocation={gps.location}
         plans={planMarkers}
+        venues={venueMarkers}
         onPlanClick={(id) => navigate(`/plans/${id}`)}
         // recenterToken se consume vía key para forzar re-mount del updater si MapBackground
         // no expone un método público. (Alternativa: pasar prop extra. Aquí usamos key.)
