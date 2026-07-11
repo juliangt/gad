@@ -1,5 +1,3 @@
-import pytest
-
 from gad.chat.websocket import SlidingWindowRateLimiter
 
 

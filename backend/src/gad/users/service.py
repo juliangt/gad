@@ -9,8 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from gad.exceptions import ConflictError, NotFoundError, ValidationError
 from gad.config import settings
+from gad.exceptions import ConflictError, NotFoundError, ValidationError
 from gad.models.social import Block
 from gad.models.user import User, UserPreferences
 from gad.schemas.user import PreferencesIn, UserUpdateIn
