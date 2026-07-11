@@ -2,11 +2,12 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.auth.dependencies import get_current_user
 from gad.db import get_session
+from gad.middleware.rate_limit import limiter
 from gad.models.user import User
 from gad.safety.schemas import (
     PeerLocationOut,
@@ -69,7 +70,9 @@ async def delete_contact_endpoint(
 
 
 @router.post("/safety/{match_id}/ping")
+@limiter.limit("10/minute")
 async def ping_endpoint(
+    request: Request,
     match_id: UUID,
     data: PingIn,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -112,7 +115,9 @@ async def revoke_share_link_endpoint(
 
 
 @router.post("/safety/{match_id}/sos", response_model=SosOut)
+@limiter.limit("10/minute")
 async def sos_endpoint(
+    request: Request,
     match_id: UUID,
     data: PingIn,
     current_user: Annotated[User, Depends(get_current_user)],

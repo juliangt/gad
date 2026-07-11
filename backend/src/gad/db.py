@@ -15,6 +15,8 @@ engine = create_async_engine(
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
+    pool_timeout=30,  # seg: espera antes de lanzar TimeoutError al agotar pool
+    pool_recycle=1800,  # 30 min: recicla conns para evitar stale/storm de reconexiones
 )
 
 async_session_maker = async_sessionmaker(

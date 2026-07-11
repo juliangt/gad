@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
 from gad.admin.router import router as admin_router
@@ -17,6 +19,7 @@ from gad.health import router as health_router
 from gad.jobs.scheduler import shutdown_scheduler, start_scheduler
 from gad.logging_setup import setup_logging
 from gad.matching.router import router as matching_router
+from gad.middleware.body_size import BodySizeLimitMiddleware
 from gad.middleware.metrics import metrics_router
 from gad.middleware.request_logging import RequestLoggingMiddleware
 from gad.middleware.security_headers import SecurityHeadersMiddleware
@@ -60,6 +63,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Orden de add_middleware (Starlette prepend): la última línea es la
+    # más externa. Queremos: TrustedHost > GZip > BodySize > CORS >
+    # SecurityHeaders > RequestLogging > app.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -69,6 +75,9 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
+    app.add_middleware(BodySizeLimitMiddleware, max_body=settings.max_request_body_size)
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts)
 
     @app.exception_handler(GADError)
     async def gad_error_handler(request: Request, exc: GADError) -> JSONResponse:

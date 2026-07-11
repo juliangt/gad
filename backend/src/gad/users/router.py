@@ -2,11 +2,12 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.auth.dependencies import get_current_user, get_token_store
 from gad.db import get_session
+from gad.middleware.rate_limit import limiter
 from gad.models.user import User
 from gad.schemas.block import BlockOut
 from gad.schemas.user import (
@@ -87,7 +88,9 @@ async def put_preferences(
 
 
 @router.post("/me/avatar", response_model=UserDetail)
+@limiter.limit("5/minute")
 async def post_avatar(
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
     file: Annotated[UploadFile, File()],

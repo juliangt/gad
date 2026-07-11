@@ -43,11 +43,18 @@ async def list_reviews_endpoint(
     before: datetime | None = Query(default=None),
 ) -> PaginatedOut[ReviewWithReviewer]:
     reviews = await list_reviews_for_user(session, user_id, limit=limit, before=before)
+    # Batch fetch de reviewers: 1 query en vez de N.
+    reviewer_ids = list({r.reviewer_id for r in reviews})
+    reviewers_map: dict = {}
+    if reviewer_ids:
+        reviewers_result = await session.execute(
+            select(User).where(User.id.in_(reviewer_ids))
+        )
+        reviewers_map = {u.id: u for u in reviewers_result.scalars().all()}
+
     out = []
     for r in reviews:
-        reviewer = (
-            await session.execute(select(User).where(User.id == r.reviewer_id))
-        ).scalar_one()
+        reviewer = reviewers_map[r.reviewer_id]
         out.append(
             ReviewWithReviewer(
                 id=r.id, match_id=r.match_id, reviewer_id=r.reviewer_id,

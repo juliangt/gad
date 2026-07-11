@@ -9,11 +9,29 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from gad.exceptions import ConflictError, NotFoundError
+from gad.config import settings
+from gad.exceptions import ConflictError, NotFoundError, ValidationError
 from gad.models.social import Block
 from gad.models.user import User, UserPreferences
 from gad.schemas.user import PreferencesIn, UserUpdateIn
 from gad.storage import get_storage
+
+ALLOWED_AVATAR_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MAX_AVATAR_DIMENSION = 4096  # px
+# Pillow lanza DecompressionBombError si la imagen supera este umbral.
+Image.MAX_IMAGE_PIXELS = MAX_AVATAR_DIMENSION * MAX_AVATAR_DIMENSION
+
+# Magic bytes por Content-Type para validar que el contenido coincide.
+_AVATAR_MAGIC = {
+    "image/jpeg": (b"\xff\xd8\xff",),
+    "image/png": (b"\x89PNG\r\n\x1a\n",),
+    "image/webp": (b"RIFF",),  # WEBP empieza con RIFF....WEBP
+}
+
+
+def _has_valid_magic(raw: bytes, content_type: str) -> bool:
+    signatures = _AVATAR_MAGIC.get(content_type, ())
+    return any(raw.startswith(sig) for sig in signatures)
 
 
 async def get_or_create_preferences(session: AsyncSession, user: User) -> UserPreferences:
@@ -129,9 +147,43 @@ async def set_user_status(session: AsyncSession, user_id: UUID, status) -> User:
 
 
 async def upload_avatar(session: AsyncSession, user: User, file: UploadFile) -> str:
-    """Redimensiona a 512x512, guarda y actualiza user.avatar_url."""
-    raw = await file.read()
-    img = Image.open(io.BytesIO(raw)).convert("RGB")
+    """Redimensiona a 512x512, valida tipo/tamaño y guarda el avatar.
+
+    Validaciones:
+    - Content-Type en allowlist (image/jpeg, image/png, image/webp).
+    - Tamaño <= settings.max_avatar_bytes (lee en chunks, aborta si excede).
+    - Magic bytes coherentes con el Content-Type declarado.
+    - Image.MAX_IMAGE_PIXELS protege contra decompression bombs.
+    - Image.verify() valida integridad del header antes de decodificar.
+    """
+    content_type = (file.content_type or "").lower()
+    if content_type not in ALLOWED_AVATAR_TYPES:
+        raise ValidationError(f"Tipo no permitido: {content_type}")
+
+    # Leer en chunks con tope de tamaño para no cargar archivos enormes.
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(64 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > settings.max_avatar_bytes:
+            raise ValidationError("Archivo demasiado grande")
+        chunks.append(chunk)
+    raw = b"".join(chunks)
+
+    # Magic bytes: validar firma según Content-Type declarado.
+    if not _has_valid_magic(raw, content_type):
+        raise ValidationError("El contenido no coincide con el tipo declarado")
+
+    # verify() valida integridad sin decodificar el body completo.
+    try:
+        Image.open(io.BytesIO(raw)).verify()
+        img = Image.open(io.BytesIO(raw)).convert("RGB")
+    except Exception as e:
+        raise ValidationError("Imagen inválida o corrupta") from e
+
     img.thumbnail((512, 512))
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=85)

@@ -13,4 +13,8 @@ echo "Corriendo migraciones..."
 alembic upgrade head
 
 echo "Arrancando uvicorn..."
-exec uvicorn gad.main:app --host 0.0.0.0 --port 8000
+exec uvicorn gad.main:app \
+  --host 0.0.0.0 --port 8000 \
+  --proxy-headers on \
+  --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-*}" \
+  --ws-max-size 65536
