@@ -2,9 +2,9 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from geoalchemy2.elements import WKTElement
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from geoalchemy2.elements import WKTElement
 
 from gad.auth.router import router as auth_router
 from gad.db import get_session

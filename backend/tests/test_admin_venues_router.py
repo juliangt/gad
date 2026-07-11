@@ -136,7 +136,7 @@ async def test_revoke_from_any_state(client, db_session):
 
 @pytest.mark.asyncio
 async def test_create_offer_validates_dates(client, db_session):
-    from datetime import UTC, datetime, timedelta
+    from datetime import UTC, datetime
 
     headers, _ = await _admin(client, db_session)
     now = datetime.now(UTC)

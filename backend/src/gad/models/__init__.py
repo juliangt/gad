@@ -16,8 +16,8 @@ from gad.models.enums import (
     PlanStatus,
     ReviewFlag,
     SafetyEventType,
-    VerificationLevel,
     VenueStatus,
+    VerificationLevel,
 )
 from gad.models.match import Match, MatchParticipant, Message
 from gad.models.plan import Plan, PlanApplication

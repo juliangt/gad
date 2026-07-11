@@ -29,6 +29,9 @@ from gad.admin.service import (
 )
 from gad.db import get_session
 from gad.models.user import User
+from gad.reports.schemas import ReportOut
+from gad.schemas.pagination import PaginatedOut
+from gad.users.service import set_user_status
 from gad.venues.admin_service import (
     approve_venue,
     create_offer,
@@ -41,9 +44,6 @@ from gad.venues.admin_service import (
     update_offer,
     update_venue,
 )
-from gad.reports.schemas import ReportOut
-from gad.schemas.pagination import PaginatedOut
-from gad.users.service import set_user_status
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 

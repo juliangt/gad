@@ -1,11 +1,10 @@
 # backend/tests/test_venues_service.py
-from datetime import UTC, datetime, timedelta
 
 import pytest
 from geoalchemy2.elements import WKTElement
 
-from gad.models.enums import ActivityType, OfferRedemption, VenueStatus
-from gad.models.venue import Venue, VenueOffer
+from gad.models.enums import ActivityType, VenueStatus
+from gad.models.venue import Venue
 from gad.venues.service import list_nearby_venues
 
 
