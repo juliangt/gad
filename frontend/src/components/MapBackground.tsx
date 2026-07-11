@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, Circle, useMapEvents, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { cn } from '../lib/utils';
@@ -33,12 +33,41 @@ const planIcon = new L.DivIcon({
   iconAnchor: [20, 20],
 });
 
-// Component to dynamically update map center if location changes
-function MapCenterUpdater({ center }: { center: [number, number] }) {
+function getZoomForRadius(radiusM: number): number {
+  if (radiusM <= 1000) return 14;
+  if (radiusM <= 2000) return 13;
+  return 12;
+}
+
+// Component to dynamically update map center and zoom if location or zoom changes
+function MapCenterUpdater({
+  center,
+  zoom,
+  offsetCenter,
+}: {
+  center: [number, number];
+  zoom: number;
+  offsetCenter?: boolean;
+}) {
   const map = useMap();
+  const isFirstRender = useRef(true);
+
   useEffect(() => {
-    map.setView(center, map.getZoom(), { animate: true });
-  }, [center, map]);
+    let finalCenter = center;
+    if (offsetCenter) {
+      const size = map.getSize();
+      if (size.y > 0) {
+        // Project the coordinate to pixel coordinates at the target zoom level,
+        // add size.y / 4 to move the coordinate down in the viewport (making it appear higher),
+        // then unproject it back to Lat/Lng.
+        const targetPoint = map.project(center, zoom).add([0, size.y / 4]);
+        const unprojected = map.unproject(targetPoint, zoom);
+        finalCenter = [unprojected.lat, unprojected.lng];
+      }
+    }
+    map.setView(finalCenter, zoom, { animate: !isFirstRender.current });
+    isFirstRender.current = false;
+  }, [center, zoom, map, offsetCenter]);
   return null;
 }
 
@@ -125,17 +154,24 @@ export function MapBackground({
 }: MapBackgroundProps) {
   // Default to Buenos Aires if no location
   const center: [number, number] = userLocation || [-34.5900, -58.4300];
+  const zoom = circle ? getZoomForRadius(circle.radiusM) : 15;
 
   return (
     <div className={cn("absolute inset-0 z-0", className)}>
       <MapContainer 
         center={center} 
-        zoom={15} 
+        zoom={zoom} 
         zoomControl={false} 
         className="w-full h-full"
       >
         <TileLayer url={TILE_URL} />
-        {userLocation && <MapCenterUpdater center={userLocation} />}
+        {userLocation && (
+          <MapCenterUpdater
+            center={userLocation}
+            zoom={zoom}
+            offsetCenter={!!circle}
+          />
+        )}
         
         {userLocation && (
           <Marker position={userLocation} icon={userIcon} />
