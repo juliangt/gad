@@ -56,3 +56,7 @@ export type NotificationType =
 export type ReviewFlag = 'no_show' | 'inappropriate' | 'false_info';
 
 export type UserStatus = 'active' | 'suspended' | 'deleted';
+
+export type VenueStatus = 'pending' | 'active' | 'paused' | 'revoked';
+
+export type OfferRedemption = 'code' | 'qr' | 'mention';
