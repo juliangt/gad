@@ -26,7 +26,7 @@ vi.mock('../useUserLocation', () => ({
 // Mock de useCreatePlan
 vi.mock('../hooks', () => ({
   useCreatePlan: () => ({
-    mutate: vi.fn((payload, opts) => opts?.onSuccess?.({ id: 'plan-1' })),
+    mutate: vi.fn((_payload, opts) => opts?.onSuccess?.({ id: 'plan-1' })),
     isPending: false,
   }),
 }));
