@@ -25,6 +25,7 @@ export const planInSchema = z
     window_minutes: z.number().int().min(15).max(1440).default(120),
     max_participants: z.number().int().min(1).max(10).default(1),
     title: z.string().min(1).max(200),
+    title_suffix: z.string().max(32).default(''),
     description: z.union([z.string().max(1000), z.null()]).default(null),
     location: locationSchema,
     search_radius_m: z.number().int().min(100).max(50000).default(2000),
