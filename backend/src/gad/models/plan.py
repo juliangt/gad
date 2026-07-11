@@ -1,5 +1,6 @@
 # backend/src/gad/models/plan.py
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from geoalchemy2 import Geography
@@ -14,7 +15,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from gad.models.base import Base, TimestampMixin
 from gad.models.enums import (
@@ -23,6 +24,9 @@ from gad.models.enums import (
     PlanMode,
     PlanStatus,
 )
+
+if TYPE_CHECKING:
+    from gad.models.user import User
 
 
 class Plan(Base, TimestampMixin):
@@ -62,6 +66,8 @@ class Plan(Base, TimestampMixin):
     hidden_by_host: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
+
+    host: Mapped["User"] = relationship("User", lazy="raise")
 
 
 class PlanApplication(Base, TimestampMixin):

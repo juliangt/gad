@@ -2,9 +2,11 @@
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+from geoalchemy2 import Geometry
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import func, select
+from sqlalchemy import cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from gad.availability.alerts import notify_matching_users
 from gad.availability.matcher import find_matching_availability
@@ -158,8 +160,17 @@ async def list_nearby_plans(
     blocked_by_subq = select(Block.blocker_id).where(Block.blocked_id == viewer.id)
     exclude_ids = blocked_subq.union(blocked_by_subq)
 
+    # Extraemos ST_X/ST_Y en la misma query para evitar una segunda query
+    # por plan en el router. También precargamos el host (selectinload)
+    # para evitar N+1 al construir el HostSummary.
+    grid_col = cast(Plan.location_grid, Geometry)
     stmt = (
-        select(Plan)
+        select(
+            Plan,
+            func.ST_Y(grid_col).label("lat"),
+            func.ST_X(grid_col).label("lng"),
+        )
+        .options(selectinload(Plan.host))
         .join(User, User.id == Plan.host_id)
         .where(
             Plan.status == PlanStatus.open,
@@ -177,7 +188,12 @@ async def list_nearby_plans(
         stmt = stmt.where(Plan.mode == mode)
 
     result = await session.execute(stmt)
-    return list(result.scalars().all())
+    plans = []
+    for plan, lat, lng in result.all():
+        plan._grid_lat = lat
+        plan._grid_lng = lng
+        plans.append(plan)
+    return plans
 
 
 async def list_my_plans(
@@ -205,8 +221,15 @@ async def list_my_plans(
         .subquery()
     )
 
+    grid_col = cast(Plan.location_grid, Geometry)
     stmt = (
-        select(Plan, func.coalesce(pending_subq.c.pending_count, 0))
+        select(
+            Plan,
+            func.coalesce(pending_subq.c.pending_count, 0),
+            func.ST_Y(grid_col).label("lat"),
+            func.ST_X(grid_col).label("lng"),
+        )
+        .options(selectinload(Plan.host))
         .outerjoin(pending_subq, pending_subq.c.plan_id == Plan.id)
         .where(Plan.host_id == host_id)
         .order_by(Plan.created_at.desc())
@@ -220,5 +243,10 @@ async def list_my_plans(
         stmt = stmt.where(Plan.created_at < before)
 
     result = await session.execute(stmt)
-    return [(row[0], row[1]) for row in result.all()]
+    rows = []
+    for plan, count, lat, lng in result.all():
+        plan._grid_lat = lat
+        plan._grid_lng = lng
+        rows.append((plan, count))
+    return rows
 

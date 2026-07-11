@@ -25,19 +25,42 @@ from gad.plans.service import (
 router = APIRouter(prefix="/plans", tags=["plans"])
 
 
+def _get_grid_coords(plan: Plan) -> tuple[float | None, float | None]:
+    """Devuelve (lat, lng) del grid: de la query batch si está, o None."""
+    return getattr(plan, "_grid_lat", None), getattr(plan, "_grid_lng", None)
+
+
+def _loaded_host(plan: Plan) -> User | None:
+    """Devuelve el host si ya está cargado (selectinload), sin trigger lazy.
+
+    Plan.host usa lazy='raise' para prevenir N+1 accidental; este helper
+    chequea si la relación está cargada antes de acceder.
+    """
+    from sqlalchemy import inspect as sa_inspect
+
+    state = sa_inspect(plan)
+    if "host" in state.unloaded:
+        return None
+    return plan.host
+
+
 async def _plan_to_out(session: AsyncSession, plan: Plan) -> PlanOut:
-    # Cargar host
-    result = await session.execute(select(User).where(User.id == plan.host_id))
-    host = result.scalar_one()
-    # Extraer lat/lng del grid con ST_X/ST_Y. La columna es geography;
-    # ST_X/ST_Y requieren geometry, por eso el cast.
-    grid_col = cast(plan.__table__.c.location_grid, Geometry)
-    point_stmt = select(
-        func.ST_Y(grid_col).label("lat"),
-        func.ST_X(grid_col).label("lng"),
-    ).where(plan.__table__.c.id == plan.id)
-    point_result = await session.execute(point_stmt)
-    lat, lng = point_result.one()
+    # Host: ya viene cargado vía selectinload en listados; en single-plan
+    # puede no estar, hacemos fallback a una query.
+    host = _loaded_host(plan)
+    if host is None:
+        result = await session.execute(select(User).where(User.id == plan.host_id))
+        host = result.scalar_one()
+    # Coords: de la query batch si vino, si no query puntual.
+    lat, lng = _get_grid_coords(plan)
+    if lat is None or lng is None:
+        grid_col = cast(plan.__table__.c.location_grid, Geometry)
+        point_stmt = select(
+            func.ST_Y(grid_col).label("lat"),
+            func.ST_X(grid_col).label("lng"),
+        ).where(plan.__table__.c.id == plan.id)
+        point_result = await session.execute(point_stmt)
+        lat, lng = point_result.one()
 
     return PlanOut(
         id=plan.id,
