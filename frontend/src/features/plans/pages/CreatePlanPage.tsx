@@ -15,7 +15,7 @@ import { PLAN_DEFAULTS, PLAN_MODES, ACTIVITY_META } from '../constants';
 import { planInSchema, type PlanInForm } from '../schemas';
 import { useCreatePlan } from '../hooks';
 import { useUserLocation } from '../useUserLocation';
-import { MapBackground } from '../../../components/MapBackground';
+import { MapPicker } from '../components/MapPicker';
 import type { ActivityType, PlanIn, PlanMode } from '../types';
 
 export default function CreatePlanPage() {
@@ -36,6 +36,7 @@ export default function CreatePlanPage() {
       window_minutes: PLAN_DEFAULTS.window_minutes,
       max_participants: PLAN_DEFAULTS.max_participants,
       title: ACTIVITY_META[PLAN_DEFAULTS.activity_type]?.label || 'Nuevo Plan',
+      title_suffix: '',
       description: null,
       location: {
         // Coords por defecto: las del usuario si ya hay, si no centro de CABA.
@@ -152,15 +153,22 @@ export default function CreatePlanPage() {
 
   return (
     <div className="absolute inset-0 z-50 overflow-hidden">
-      {/* Mapa de fondo */}
+      {/* Mapa de fondo táctil */}
       <div className="absolute inset-0 z-0">
-        <MapBackground userLocation={gps.location} plans={[]} />
+        <MapPicker
+          userLocation={gps.location}
+          onMapClick={(lat, lng) => gps.setManualLocation(lat, lng)}
+          circle={{
+            center: gps.location ?? [-34.5900, -58.4300],
+            radiusM: watch('search_radius_m'),
+          }}
+          pickerMarker={gps.location}
+        />
       </div>
 
-      {/* Backdrop translúcido */}
+      {/* Backdrop solo sobre el área del sheet (pointer-events-none para no bloquear el mapa) */}
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm z-10 animate-in fade-in duration-200"
-        onClick={() => navigate('/explore')}
+        className="absolute inset-x-0 bottom-0 top-[12vh] bg-black/20 backdrop-blur-[2px] z-10 pointer-events-none"
         aria-hidden="true"
       />
 
@@ -273,34 +281,27 @@ export default function CreatePlanPage() {
             />
           )}
 
-          {/* Ubicación */}
+          {/* Ubicación: punto de referencia via mapa */}
           <section className="flex flex-col gap-2">
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Ubicación
             </label>
+            <p className="text-xs text-gray-400">Tocá el mapa para ubicar tu plan</p>
+          </section>
+
+          {/* Referencia (campo title_suffix) */}
+          <section className="flex flex-col gap-2">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Referencia
+            </label>
             <Input
-              placeholder="Barrio o referencia (ej: Palermo)"
-              {...register('location.label')}
-              invalid={!!errors.location?.label}
+              placeholder="Palermo, plaza del barrio"
+              maxLength={32}
+              {...register('title_suffix')}
             />
-            {errors.location?.label && (
-              <p className="text-xs text-red-500 mt-1">{errors.location.label.message as string}</p>
+            {errors.title_suffix && (
+              <p className="text-xs text-red-500 mt-1">{errors.title_suffix.message as string}</p>
             )}
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>
-                Coordenadas:{' '}
-                {gps.location
-                  ? `${gps.location[0].toFixed(4)}, ${gps.location[1].toFixed(4)}`
-                  : '— sin GPS —'}
-              </span>
-              <button
-                type="button"
-                className="text-brand-600 font-medium underline"
-                onClick={() => void gps.request()}
-              >
-                {gps.location ? 'Actualizar' : 'Activar GPS'}
-              </button>
-            </div>
           </section>
 
           {/* Botón Opciones Avanzadas */}
