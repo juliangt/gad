@@ -151,8 +151,8 @@ async def test_cancel_plan_sets_hidden_by_host(db_session):
 
 @pytest.mark.asyncio
 async def test_update_plan_changes_max_participants(db_session):
-    from gad.plans.service import update_plan
     from gad.plans.schemas import PlanUpdateIn
+    from gad.plans.service import update_plan
 
     host = await _make_host(db_session)
     plan = await create_plan(
@@ -174,9 +174,9 @@ async def test_update_plan_changes_max_participants(db_session):
 
 @pytest.mark.asyncio
 async def test_update_plan_rejects_max_below_current(db_session):
-    from gad.plans.service import update_plan
-    from gad.plans.schemas import PlanUpdateIn
     from gad.exceptions import ConflictError
+    from gad.plans.schemas import PlanUpdateIn
+    from gad.plans.service import update_plan
 
     host = await _make_host(db_session)
     plan = await create_plan(
@@ -200,9 +200,9 @@ async def test_update_plan_rejects_max_below_current(db_session):
 
 @pytest.mark.asyncio
 async def test_update_plan_rejects_non_open(db_session):
-    from gad.plans.service import update_plan
-    from gad.plans.schemas import PlanUpdateIn
     from gad.exceptions import ConflictError
+    from gad.plans.schemas import PlanUpdateIn
+    from gad.plans.service import update_plan
 
     host = await _make_host(db_session)
     plan = await create_plan(
@@ -226,8 +226,8 @@ async def test_update_plan_rejects_non_open(db_session):
 @pytest.mark.asyncio
 async def test_update_plan_hidden_works_on_non_open(db_session):
     """hidden se puede cambiar aunque el plan no esté open (es solo visibilidad)."""
-    from gad.plans.service import update_plan
     from gad.plans.schemas import PlanUpdateIn
+    from gad.plans.service import update_plan
 
     host = await _make_host(db_session)
     plan = await create_plan(
@@ -250,9 +250,8 @@ async def test_update_plan_hidden_works_on_non_open(db_session):
 
 @pytest.mark.asyncio
 async def test_list_my_plans_returns_own_with_pending_count(db_session):
-    from gad.plans.service import list_my_plans
     from gad.models.plan import PlanApplication
-    from gad.models.enums import ApplicationStatus
+    from gad.plans.service import list_my_plans
 
     host = await _make_host(db_session)
     plan = await create_plan(
@@ -286,7 +285,7 @@ async def test_list_my_plans_excludes_hidden(db_session):
     from gad.plans.service import list_my_plans
 
     host = await _make_host(db_session)
-    plan_open = await create_plan(
+    await create_plan(
         db_session,
         host,
         PlanIn(

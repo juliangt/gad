@@ -31,11 +31,11 @@ from gad.matching.service import (
 )
 from gad.models.enums import PlanStatus
 from gad.models.match import MatchParticipant
-from gad.plans.router import _plan_to_out
-from gad.plans.schemas import MyPlanItem, PlanOut
-from gad.plans.service import list_my_plans
 from gad.models.plan import Plan, PlanApplication
 from gad.models.user import User
+from gad.plans.router import _plan_to_out
+from gad.plans.schemas import MyPlanItem
+from gad.plans.service import list_my_plans
 from gad.schemas.pagination import PaginatedOut
 
 router = APIRouter(tags=["matching"])

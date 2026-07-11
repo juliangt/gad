@@ -1,5 +1,6 @@
 # backend/src/gad/plans/service.py
 from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import func, select
@@ -153,7 +154,7 @@ async def list_nearby_plans(
 async def list_my_plans(
     session: AsyncSession,
     *,
-    host_id,
+    host_id: UUID,
     status_filter: list[PlanStatus] | None = None,
     limit: int = 50,
     before: datetime | None = None,

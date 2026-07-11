@@ -1,5 +1,4 @@
 # backend/tests/test_my_plans_router.py
-from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import ASGITransport, AsyncClient
