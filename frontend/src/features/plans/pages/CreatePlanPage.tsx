@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Clock, Calendar, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, Calendar, X } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
@@ -12,6 +12,7 @@ import { ActivityPicker } from '../components/ActivityPicker';
 import { ParticipantPicker } from '../components/ParticipantPicker';
 import { RadiusPicker } from '../components/RadiusPicker';
 import { SchedulePicker } from '../components/SchedulePicker';
+import { ValidityPicker } from '../components/ValidityPicker';
 import { PLAN_DEFAULTS, PLAN_MODES, ACTIVITY_META } from '../constants';
 import { planInSchema, type PlanInForm } from '../schemas';
 import { useCreatePlan } from '../hooks';
@@ -75,7 +76,7 @@ export default function CreatePlanPage() {
 
   // Estados locales para los botones de las opciones avanzadas
   const [selectedValidity, setSelectedValidity] = useState<
-    60 | 120 | 180 | 'resto_del_dia'
+    60 | 120 | 180 | 0
   >(120);
 
   // Cargar preferencias del usuario como valores por defecto al iniciar
@@ -87,9 +88,18 @@ export default function CreatePlanPage() {
       }
       const validity = me.preferences.default_plan_validity_mins;
       if (validity === 0) {
-        setSelectedValidity('resto_del_dia');
+        setSelectedValidity(0);
       } else if (validity === 60 || validity === 120 || validity === 180) {
         setSelectedValidity(validity as any);
+      }
+      const groupSize = me.preferences.group_size_preference;
+      if (groupSize) {
+        const groupSizeMap = {
+          one_on_one: 1,
+          small_group: 4,
+          either: 10,
+        };
+        setValue('max_participants', groupSizeMap[groupSize]);
       }
     }
   }, [me, setValue]);
@@ -132,7 +142,7 @@ export default function CreatePlanPage() {
 
   // Sincronizar vigencia con react-hook-form
   useEffect(() => {
-    if (selectedValidity === 'resto_del_dia') {
+    if (selectedValidity === 0) {
       const mins = getMinutesRemainingInDay(scheduledAt);
       setValue('window_minutes', mins, { shouldValidate: true });
     } else {
@@ -195,14 +205,16 @@ export default function CreatePlanPage() {
           isMinimized ? "max-h-[140px] h-[140px]" : "max-h-[88vh]"
         )}
       >
-        {/* Barra superior de arrastre */}
+        {/* Barra superior de arrastre / Clickeable para minimizar/agrandar */}
         <div
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          className="w-full py-3 flex flex-col items-center cursor-grab active:cursor-grabbing"
+          onClick={() => setIsMinimized(!isMinimized)}
+          className="w-full py-4 flex flex-col items-center cursor-pointer hover:bg-gray-50 transition-colors"
+          title={isMinimized ? "Expandir formulario" : "Minimizar formulario"}
         >
-          <div className="w-12 h-1.5 bg-gray-200 rounded-full" />
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
         </div>
 
         {/* Cabecera del modal */}
@@ -216,15 +228,6 @@ export default function CreatePlanPage() {
             <h1 className="text-xl font-bold text-gray-900">Crear Plan</h1>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsMinimized(!isMinimized)}
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 active:scale-95 transition-transform"
-              title={isMinimized ? "Expandir formulario" : "Minimizar formulario"}
-              aria-label={isMinimized ? "Expandir" : "Minimizar"}
-            >
-              {isMinimized ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-            </button>
             <button
               type="button"
               onClick={() => navigate('/explore')}
@@ -412,31 +415,10 @@ export default function CreatePlanPage() {
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Vigencia del plan
                 </label>
-                <div className="grid grid-cols-4 gap-1.5 w-full">
-                  {([
-                    { value: 60, label: '1 hora' },
-                    { value: 120, label: '2 horas' },
-                    { value: 180, label: '3 horas' },
-                    { value: 'resto_del_dia', label: 'Resto del día' },
-                  ] as const).map((opt) => {
-                    const isSelected = selectedValidity === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setSelectedValidity(opt.value)}
-                        className={cn(
-                          'py-3 rounded-xl font-medium text-[11px] flex items-center justify-center text-center transition-colors border leading-tight',
-                          isSelected
-                            ? 'bg-gray-100 border-gray-900 border-2 font-bold text-gray-900 shadow-sm'
-                            : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100',
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                <ValidityPicker
+                  value={selectedValidity}
+                  onChange={setSelectedValidity}
+                />
               </section>
             </div>
           )}

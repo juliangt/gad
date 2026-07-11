@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
@@ -6,8 +6,11 @@ import { Input } from '@/components/ui/Input';
 import { useMe, useUpdatePreferences } from '../hooks';
 import { preferencesSchema, type PreferencesFormValues } from '../schemas';
 import { ActivityTypeChips } from './ActivityTypeChips';
-import { GROUP_SIZE_OPTIONS, GENDER_PREFERENCE_OPTIONS, RADIUS_OPTIONS } from '../constants';
+import { GENDER_PREFERENCE_OPTIONS } from '../constants';
 import type { ActivityType } from '@/types/enums';
+import { ParticipantPicker } from '../../plans/components/ParticipantPicker';
+import { RadiusPicker } from '../../plans/components/RadiusPicker';
+import { ValidityPicker } from '../../plans/components/ValidityPicker';
 
 const selectClass =
   'w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500';
@@ -27,6 +30,7 @@ export function PreferencesForm() {
     handleSubmit,
     watch,
     setValue,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<PreferencesFormValues>({
     resolver: zodResolver(preferencesSchema),
@@ -65,39 +69,34 @@ export function PreferencesForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
       <div>
-        <label htmlFor="default_search_radius_m" className={sectionLabelClass}>
-          Radio de búsqueda
-        </label>
-        <select
-          id="default_search_radius_m"
-          className={selectClass}
-          {...register('default_search_radius_m', { valueAsNumber: true })}
-        >
-          {RADIUS_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <span className={sectionLabelClass}>Radio de búsqueda</span>
+        <Controller
+          control={control}
+          name="default_search_radius_m"
+          render={({ field }) => (
+            <RadiusPicker
+              value={field.value as any}
+              onChange={field.onChange}
+            />
+          )}
+        />
         {errors.default_search_radius_m && (
           <p className="text-xs text-red-600 mt-1">{errors.default_search_radius_m.message}</p>
         )}
       </div>
 
       <div>
-        <label htmlFor="default_plan_validity_mins" className={sectionLabelClass}>
-          Vigencia del plan por defecto
-        </label>
-        <select
-          id="default_plan_validity_mins"
-          className={selectClass}
-          {...register('default_plan_validity_mins', { valueAsNumber: true })}
-        >
-          <option value={60}>1 hora</option>
-          <option value={120}>2 horas</option>
-          <option value={180}>3 horas</option>
-          <option value={0}>Resto del día</option>
-        </select>
+        <span className={sectionLabelClass}>Vigencia del plan por defecto</span>
+        <Controller
+          control={control}
+          name="default_plan_validity_mins"
+          render={({ field }) => (
+            <ValidityPicker
+              value={field.value as any}
+              onChange={field.onChange}
+            />
+          )}
+        />
         {errors.default_plan_validity_mins && (
           <p className="text-xs text-red-600 mt-1">{errors.default_plan_validity_mins.message}</p>
         )}
@@ -112,20 +111,30 @@ export function PreferencesForm() {
       </div>
 
       <div>
-        <label htmlFor="group_size_preference" className={sectionLabelClass}>
-          Tamaño de grupo
-        </label>
-        <select
-          id="group_size_preference"
-          className={selectClass}
-          {...register('group_size_preference')}
-        >
-          {GROUP_SIZE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <span className={sectionLabelClass}>Tamaño de grupo</span>
+        <Controller
+          control={control}
+          name="group_size_preference"
+          render={({ field }) => {
+            const valMap = {
+              one_on_one: 1,
+              small_group: 4,
+              either: 10,
+            } as const;
+            const revMap = {
+              1: 'one_on_one',
+              4: 'small_group',
+              10: 'either',
+            } as const;
+            const numericValue = field.value ? (valMap[field.value as keyof typeof valMap] ?? 4) : 4;
+            return (
+              <ParticipantPicker
+                value={numericValue}
+                onChange={(numVal) => field.onChange(revMap[numVal])}
+              />
+            );
+          }}
+        />
         {errors.group_size_preference && (
           <p className="text-xs text-red-600 mt-1">{errors.group_size_preference.message}</p>
         )}

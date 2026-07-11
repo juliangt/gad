@@ -126,19 +126,17 @@ export function EditPlanSheet({ plan, onClose, onSaved }: Props) {
         "relative bg-white w-full rounded-t-3xl p-6 pb-safe-bottom flex flex-col gap-4 animate-in slide-in-from-bottom-full duration-300 shadow-2xl transition-all duration-300 ease-in-out",
         isMinimized ? "max-h-[140px] h-[140px] overflow-hidden" : "max-h-[88vh] overflow-y-auto hide-scrollbar"
       )}>
-        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto -mt-2 mb-1" />
+        {/* Barra superior de arrastre / Clickeable para minimizar/agrandar */}
+        <div
+          onClick={() => setIsMinimized(!isMinimized)}
+          className="w-full py-2 flex flex-col items-center cursor-pointer hover:bg-gray-50 transition-colors -mt-4 mb-1"
+          title={isMinimized ? "Expandir formulario" : "Minimizar formulario"}
+        >
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+        </div>
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-900">Modificar plan</h2>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsMinimized(!isMinimized)}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 active:scale-95 transition-transform"
-              title={isMinimized ? "Expandir formulario" : "Minimizar formulario"}
-              aria-label={isMinimized ? "Expandir" : "Minimizar"}
-            >
-              {isMinimized ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
             <button
               type="button"
               onClick={onClose}
