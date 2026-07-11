@@ -22,3 +22,7 @@ def create_spatial_indexes() -> None:
         "CREATE INDEX IF NOT EXISTS ix_safety_sessions_last_ping_location "
         "ON safety_sessions USING GIST (last_ping_location);"
     )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_venues_location "
+        "ON venues USING GIST (location);"
+    )
