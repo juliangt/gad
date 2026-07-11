@@ -21,7 +21,7 @@ export interface ActivityMeta {
 
 /** Las 7 actividades del enum ActivityType (orden de UI). */
 export const ACTIVITY_TYPES: ActivityMeta[] = [
-  { id: 'coffee', label: 'Café', icon: Coffee, activeClass: 'bg-brand-50 text-brand-600 border-brand-200' },
+  { id: 'coffee', label: 'Café', icon: Coffee, activeClass: 'bg-brown-50 text-brown-700 border-brown-200' },
   { id: 'drinks', label: 'Cerveza', icon: Beer, activeClass: 'bg-amber-50 text-amber-700 border-amber-200' },
   { id: 'food', label: 'Comida', icon: Utensils, activeClass: 'bg-orange-50 text-orange-700 border-orange-200' },
   { id: 'walk', label: 'Caminata', icon: Footprints, activeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' },

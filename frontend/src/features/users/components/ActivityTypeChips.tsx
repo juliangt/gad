@@ -2,6 +2,7 @@
 import type { ActivityType } from '@/types/enums';
 import { cn } from '@/lib/utils';
 import { ACTIVITY_OPTIONS } from '../constants';
+import { ACTIVITY_META } from '@/features/plans/constants';
 
 interface ActivityTypeChipsProps {
   value: ActivityType[];
@@ -33,7 +34,7 @@ export function ActivityTypeChips({ value, onChange, readOnly = false }: Activit
             className={cn(
               'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
               selected
-                ? 'bg-brand-50 text-brand-600 border-brand-200'
+                ? ACTIVITY_META[opt.value]?.activeClass || 'bg-brand-600 text-white border-brand-200'
                 : 'bg-gray-50 text-gray-600 border-gray-200',
               readOnly && 'cursor-default',
             )}
