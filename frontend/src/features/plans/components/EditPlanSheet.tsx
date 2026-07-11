@@ -29,6 +29,8 @@ export function EditPlanSheet({ plan, onClose, onSaved }: Props) {
       title: plan.title,
       description: plan.description,
       scheduled_at: plan.scheduled_at,
+      max_participants: plan.max_participants,
+      search_radius_m: plan.search_radius_m,
     },
     mode: 'onTouched',
   });
@@ -38,6 +40,8 @@ export function EditPlanSheet({ plan, onClose, onSaved }: Props) {
       title: values.title,
       description: values.description ?? null,
       scheduled_at: values.scheduled_at ?? null,
+      max_participants: values.max_participants,
+      search_radius_m: values.search_radius_m,
     };
     updatePlan.mutate(payload, {
       onSuccess: (updated) => {
@@ -113,6 +117,46 @@ export function EditPlanSheet({ plan, onClose, onSaved }: Props) {
             />
             {errors.scheduled_at && (
               <p className="text-xs text-red-500 mt-1">{errors.scheduled_at.message as string}</p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Cupo máximo (1–10)
+            </label>
+            <Input
+              type="number"
+              min={1}
+              max={10}
+              {...register('max_participants', { valueAsNumber: true })}
+              invalid={!!errors.max_participants}
+            />
+            {errors.max_participants && (
+              <p className="text-xs text-red-500 mt-1">
+                {errors.max_participants.message as string}
+              </p>
+            )}
+            <p className="text-xs text-gray-400">
+              No puede ser menor a los ya aceptados ({plan.current_participants}).
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Radio de búsqueda (metros, 100–50000)
+            </label>
+            <Input
+              type="number"
+              min={100}
+              max={50000}
+              step={100}
+              {...register('search_radius_m', { valueAsNumber: true })}
+              invalid={!!errors.search_radius_m}
+            />
+            {errors.search_radius_m && (
+              <p className="text-xs text-red-500 mt-1">
+                {errors.search_radius_m.message as string}
+              </p>
             )}
           </div>
 
