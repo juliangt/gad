@@ -55,3 +55,48 @@ export interface AdminReviewOut {
 
 /** Marca el tipo como usado para evitar lint de import no consumido. */
 export type ReportRow = ReportOut;
+
+/** Tipos para gestión admin de venues (GET/POST/PATCH /admin/venues*). */
+export interface VenueOfferAdminOut {
+  id: string;
+  title: string;
+  description: string;
+  redemption_method: string;
+  valid_from: string;
+  valid_until: string;
+  active: boolean;
+}
+
+export interface VenueAdminOut {
+  id: string;
+  name: string;
+  category: string;
+  address: string;
+  lat: number;
+  lng: number;
+  status: string;
+  owner_name: string;
+  owner_email: string;
+  owner_phone: string | null;
+  created_at: string;
+  offers: VenueOfferAdminOut[];
+}
+
+export interface VenueCreateInput {
+  name: string;
+  category: string;
+  address: string;
+  lat: number;
+  lng: number;
+  owner_name: string;
+  owner_email: string;
+  owner_phone?: string | null;
+}
+
+export interface VenueOfferCreateInput {
+  title: string;
+  description: string;
+  redemption_method: string;
+  valid_from: string;
+  valid_until: string;
+}

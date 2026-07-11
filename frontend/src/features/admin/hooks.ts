@@ -13,6 +13,9 @@ import type {
   ReportOut,
   ReportStatusUpdate,
   AdminReviewOut,
+  VenueAdminOut,
+  VenueCreateInput,
+  VenueOfferCreateInput,
 } from './types';
 
 export const adminKeys = {
@@ -21,6 +24,7 @@ export const adminKeys = {
   reports: (status?: string) => ['admin', 'reports', { status }] as const,
   users: (status?: string) => ['admin', 'users', { status }] as const,
   reviews: () => ['admin', 'reviews'] as const,
+  venues: (status?: string) => ['admin', 'venues', { status }] as const,
 };
 
 const PAGE_SIZE = 50;
@@ -154,5 +158,73 @@ export function useAdminDeleteReview() {
       qc.invalidateQueries({ queryKey: adminKeys.reviews() });
     },
     onError: () => toast.error('No se pudo eliminar la reseña.'),
+  });
+}
+
+// ---------- Venues (sponsor management) ----------
+
+export function useAdminVenues(status?: string) {
+  return useQuery({
+    queryKey: adminKeys.venues(status),
+    queryFn: () =>
+      apiGet<VenueAdminOut[]>('/admin/venues', {
+        query: { status, limit: 100 },
+      }),
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateVenue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: VenueCreateInput) => apiPost<VenueAdminOut>('/admin/venues', input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'venues'] });
+      toast.success('Venue creado.');
+    },
+    onError: () => toast.error('No se pudo crear el venue.'),
+  });
+}
+
+export function useApproveVenue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (venueId: string) => apiPost<VenueAdminOut>(`/admin/venues/${venueId}/approve`),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'venues'] }),
+    onSuccess: () => toast.success('Venue aprobado.'),
+    onError: () => toast.error('No se pudo aprobar el venue.'),
+  });
+}
+
+export function usePauseVenue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (venueId: string) => apiPost<VenueAdminOut>(`/admin/venues/${venueId}/pause`),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'venues'] }),
+    onSuccess: () => toast.success('Venue pausado.'),
+    onError: () => toast.error('No se pudo pausar el venue.'),
+  });
+}
+
+export function useRevokeVenue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (venueId: string) => apiPost<VenueAdminOut>(`/admin/venues/${venueId}/revoke`),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'venues'] }),
+    onSuccess: () => toast.success('Venue revocado.'),
+    onError: () => toast.error('No se pudo revocar el venue.'),
+  });
+}
+
+export function useCreateVenueOffer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ venueId, input }: { venueId: string; input: VenueOfferCreateInput }) =>
+      apiPost<VenueAdminOut>(`/admin/venues/${venueId}/offers`, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'venues'] });
+      toast.success('Oferta creada.');
+    },
+    onError: () => toast.error('No se pudo crear la oferta.'),
   });
 }
