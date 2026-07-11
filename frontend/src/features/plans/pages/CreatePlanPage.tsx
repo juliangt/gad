@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Clock, Calendar, X } from 'lucide-react';
+import { Clock, Calendar, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
@@ -71,6 +71,7 @@ export default function CreatePlanPage() {
   const scheduledAt = watch('scheduled_at');
 
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   // Estados locales para los botones de las opciones avanzadas
   const [selectedValidity, setSelectedValidity] = useState<
@@ -187,9 +188,12 @@ export default function CreatePlanPage() {
         aria-modal="true"
         style={{
           transform: `translateY(${dragOffset}px)`,
-          transition: dragStart === null ? 'transform 0.2s ease-out' : 'none',
+          transition: dragStart === null ? 'transform 0.2s ease-out, max-h 0.3s ease-in-out, height 0.3s ease-in-out' : 'none',
         }}
-        className="absolute bottom-4 left-4 right-4 bg-white rounded-3xl shadow-2xl z-20 flex flex-col max-h-[88vh] overflow-hidden"
+        className={cn(
+          "absolute bottom-4 left-4 right-4 bg-white rounded-3xl shadow-2xl z-20 flex flex-col overflow-hidden transition-all duration-300 ease-in-out",
+          isMinimized ? "max-h-[140px] h-[140px]" : "max-h-[88vh]"
+        )}
       >
         {/* Barra superior de arrastre */}
         <div
@@ -208,20 +212,48 @@ export default function CreatePlanPage() {
           onTouchEnd={handleTouchEnd}
           className="px-5 pb-2 flex items-center justify-between"
         >
-          <h1 className="text-xl font-bold text-gray-900">Crear Plan</h1>
-          <button
-            type="button"
-            onClick={() => navigate('/explore')}
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 active:scale-95 transition-transform"
-            aria-label="Cerrar"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex flex-col">
+            <h1 className="text-xl font-bold text-gray-900">Crear Plan</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsMinimized(!isMinimized)}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 active:scale-95 transition-transform"
+              title={isMinimized ? "Expandir formulario" : "Minimizar formulario"}
+              aria-label={isMinimized ? "Expandir" : "Minimizar"}
+            >
+              {isMinimized ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/explore')}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 active:scale-95 transition-transform"
+              aria-label="Cerrar"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
+
+        {isMinimized && (
+          <div className="px-5 pb-4 animate-in fade-in duration-200">
+            <button
+              type="button"
+              onClick={() => setIsMinimized(false)}
+              className="w-full py-2 bg-brand-50 text-brand-700 rounded-xl font-semibold text-sm hover:bg-brand-100 transition-colors"
+            >
+              Expandir formulario para continuar
+            </button>
+          </div>
+        )}
 
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="flex-1 flex flex-col max-h-[75vh] overflow-hidden"
+          className={cn(
+            "flex-1 flex flex-col max-h-[75vh] overflow-hidden",
+            isMinimized && "hidden"
+          )}
         >
           <div className="flex-1 overflow-y-auto p-5 pb-2 flex flex-col gap-5">
           {/* Actividad */}

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Clock, Calendar, X } from 'lucide-react';
+import { Clock, Calendar, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
@@ -68,6 +68,7 @@ export function EditPlanSheet({ plan, onClose, onSaved }: Props) {
   });
 
   const scheduledAt = watch('scheduled_at');
+  const [isMinimized, setIsMinimized] = useState(false);
 
   // Helper para vigencia: calcular minutos restantes del día
   const getMinutesRemainingInDay = (scheduledAtIso: string | null) => {
@@ -115,24 +116,53 @@ export function EditPlanSheet({ plan, onClose, onSaved }: Props) {
   return (
     <div className="absolute inset-0 z-[110] flex flex-col justify-end">
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
+        className={cn(
+          "absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 transition-all",
+          isMinimized && "bg-transparent backdrop-blur-none pointer-events-none"
+        )}
         onClick={onClose}
       />
-      <div className="relative bg-white w-full rounded-t-3xl p-6 pb-safe-bottom flex flex-col gap-4 animate-in slide-in-from-bottom-full duration-300 shadow-2xl max-h-[88vh] overflow-y-auto hide-scrollbar">
+      <div className={cn(
+        "relative bg-white w-full rounded-t-3xl p-6 pb-safe-bottom flex flex-col gap-4 animate-in slide-in-from-bottom-full duration-300 shadow-2xl transition-all duration-300 ease-in-out",
+        isMinimized ? "max-h-[140px] h-[140px] overflow-hidden" : "max-h-[88vh] overflow-y-auto hide-scrollbar"
+      )}>
         <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto -mt-2 mb-1" />
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-900">Modificar plan</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 active:scale-95"
-            aria-label="Cerrar"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsMinimized(!isMinimized)}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 active:scale-95 transition-transform"
+              title={isMinimized ? "Expandir formulario" : "Minimizar formulario"}
+              aria-label={isMinimized ? "Expandir" : "Minimizar"}
+            >
+              {isMinimized ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 active:scale-95"
+              aria-label="Cerrar"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+        {isMinimized && (
+          <div className="animate-in fade-in duration-200 mt-2">
+            <button
+              type="button"
+              onClick={() => setIsMinimized(false)}
+              className="w-full py-2 bg-brand-50 text-brand-700 rounded-xl font-semibold text-sm hover:bg-brand-100 transition-colors"
+            >
+              Expandir formulario para continuar
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit(onSubmit)} className={cn("flex flex-col gap-5", isMinimized && "hidden")}>
           {/* Actividad */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
