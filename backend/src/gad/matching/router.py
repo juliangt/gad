@@ -41,6 +41,16 @@ from gad.schemas.pagination import PaginatedOut
 router = APIRouter(tags=["matching"])
 
 
+async def _load_users_map(
+    session: AsyncSession, user_ids: list[UUID]
+) -> dict[UUID, User]:
+    """Batch fetch de Users por ids: 1 query en vez de N."""
+    if not user_ids:
+        return {}
+    result = await session.execute(select(User).where(User.id.in_(user_ids)))
+    return {u.id: u for u in result.scalars().all()}
+
+
 async def _app_to_out(session: AsyncSession, app: PlanApplication) -> ApplicationOut:
     result = await session.execute(select(User).where(User.id == app.applicant_id))
     applicant = result.scalar_one()
@@ -59,6 +69,35 @@ async def _app_to_out(session: AsyncSession, app: PlanApplication) -> Applicatio
         created_at=app.created_at,
         decided_at=app.decided_at,
     )
+
+
+async def _apps_to_out_batch(
+    session: AsyncSession, apps: list[PlanApplication]
+) -> list[ApplicationOut]:
+    """Construye ApplicationOut para N apps con un solo batch fetch de users."""
+    user_ids = list({a.applicant_id for a in apps})
+    users = await _load_users_map(session, user_ids)
+    out = []
+    for app in apps:
+        applicant = users[app.applicant_id]
+        out.append(
+            ApplicationOut(
+                id=app.id,
+                plan_id=app.plan_id,
+                applicant=ApplicantSummary(
+                    id=applicant.id,
+                    display_name=applicant.display_name,
+                    avatar_url=applicant.avatar_url,
+                    reputation_score=applicant.reputation_score,
+                    verification_level=applicant.verification_level.value,
+                ),
+                status=app.status,
+                message=app.message,
+                created_at=app.created_at,
+                decided_at=app.decided_at,
+            )
+        )
+    return out
 
 
 async def _plan_to_my_item(
@@ -118,6 +157,85 @@ async def _match_to_out(session: AsyncSession, match, viewer: User) -> MatchOut:
     )
 
 
+async def _matches_to_out_batch(
+    session: AsyncSession, matches: list, viewer: User
+) -> list[MatchOut]:
+    """Construye MatchOut para N matches con queries batcheadas.
+
+    Evita N+1: 1 query para participantes de todos los matches + 1 query
+    para plan coords (solo si el viewer es participante).
+    """
+    from gad.models.plan import Plan as PlanModel
+
+    if not matches:
+        return []
+
+    match_ids = [m.id for m in matches]
+    # Participantes en una sola query.
+    part_result = await session.execute(
+        select(User, MatchParticipant)
+        .join(MatchParticipant, MatchParticipant.user_id == User.id)
+        .where(MatchParticipant.match_id.in_(match_ids))
+    )
+    parts_by_match: dict[UUID, list[tuple[User, MatchParticipant]]] = {}
+    for u, mp in part_result.all():
+        parts_by_match.setdefault(mp.match_id, []).append((u, mp))
+
+    viewer_is_participant = any(
+        any(mp.user_id == viewer.id for _u, mp in parts)
+        for parts in parts_by_match.values()
+    )
+
+    # Planes + coords si el viewer es participante de algún match.
+    plan_coords: dict[UUID, tuple[float, float]] = {}
+    if viewer_is_participant:
+        plan_ids = list({m.plan_id for m in matches})
+        pr = await session.execute(
+            select(
+                PlanModel.id,
+                func.ST_Y(cast(PlanModel.exact_location, Geometry)).label("lat"),
+                func.ST_X(cast(PlanModel.exact_location, Geometry)).label("lng"),
+            ).where(PlanModel.id.in_(plan_ids))
+        )
+        for pid, lat, lng in pr.all():
+            if lat is not None:
+                plan_coords[pid] = (lat, lng)
+
+    out = []
+    for m in matches:
+        parts = parts_by_match.get(m.id, [])
+        participants = [
+            ParticipantOut(
+                user_id=u.id,
+                display_name=u.display_name,
+                avatar_url=u.avatar_url,
+                role=mp.role,
+                joined_at=mp.joined_at,
+            )
+            for u, mp in parts
+        ]
+        this_is_participant = any(p.user_id == viewer.id for p in participants)
+        exact_lat = exact_lng = None
+        if this_is_participant:
+            coords = plan_coords.get(m.plan_id)
+            if coords:
+                exact_lat, exact_lng = coords
+        out.append(
+            MatchOut(
+                id=m.id,
+                plan_id=m.plan_id,
+                status=m.status,
+                started_at=m.started_at,
+                ended_at=m.ended_at,
+                location_sharing_active=m.location_sharing_active,
+                participants=participants,
+                exact_location_lat=exact_lat,
+                exact_location_lng=exact_lng,
+            )
+        )
+    return out
+
+
 @router.post(
     "/plans/{plan_id}/applications", response_model=ApplicationOut, status_code=201
 )
@@ -138,7 +256,7 @@ async def list_plan_applications_endpoint(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> list[ApplicationOut]:
     apps = await list_applications_for_plan(session, current_user, plan_id)
-    return [await _app_to_out(session, a) for a in apps]
+    return await _apps_to_out_batch(session, apps)
 
 
 @router.post("/applications/{application_id}/accept", response_model=MatchOut | None)
@@ -181,7 +299,7 @@ async def my_applications_endpoint(
     before: datetime | None = Query(default=None),
 ) -> PaginatedOut[ApplicationOut]:
     apps = await list_my_applications(session, current_user, limit=limit, before=before)
-    items = [await _app_to_out(session, a) for a in apps]
+    items = await _apps_to_out_batch(session, apps)
     next_cursor = items[-1].created_at.isoformat() if len(items) == limit and items else None
     return PaginatedOut[ApplicationOut](items=items, next_cursor=next_cursor)
 
@@ -220,7 +338,7 @@ async def my_matches_endpoint(
     before: datetime | None = Query(default=None),
 ) -> PaginatedOut[MatchOut]:
     matches = await list_my_matches(session, current_user, limit=limit, before=before)
-    items = [await _match_to_out(session, m, current_user) for m in matches]
+    items = await _matches_to_out_batch(session, matches, current_user)
     next_cursor = items[-1].started_at.isoformat() if len(items) == limit and items else None
     return PaginatedOut[MatchOut](items=items, next_cursor=next_cursor)
 
