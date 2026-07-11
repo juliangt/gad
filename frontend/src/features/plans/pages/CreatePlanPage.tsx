@@ -7,6 +7,7 @@ import { Clock, Calendar, X } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
+import { Textarea } from '../../../components/ui/Textarea';
 import { ActivityPicker } from '../components/ActivityPicker';
 import { ParticipantPicker } from '../components/ParticipantPicker';
 import { RadiusPicker } from '../components/RadiusPicker';
@@ -65,14 +66,7 @@ export default function CreatePlanPage() {
   });
 
   const mode = watch('mode');
-  const activityType = watch('activity_type');
   const scheduledAt = watch('scheduled_at');
-
-  // Actualizar el título del formulario automáticamente según la actividad seleccionada
-  useEffect(() => {
-    const label = ACTIVITY_META[activityType as ActivityType]?.label || 'Nuevo Plan';
-    setValue('title', label, { shouldValidate: true });
-  }, [activityType, setValue]);
 
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -128,8 +122,9 @@ export default function CreatePlanPage() {
   }, [selectedValidity, scheduledAt, setValue]);
 
   const onSubmit = (values: PlanInForm) => {
-    // Autocompletar el título según la actividad y descripción a null
-    const finalTitle = ACTIVITY_META[values.activity_type as ActivityType]?.label || 'Nuevo Plan';
+    const activityLabel = ACTIVITY_META[values.activity_type as ActivityType]?.label || 'Nuevo Plan';
+    const suffix = values.title_suffix?.trim() ?? '';
+    const finalTitle = suffix ? `${activityLabel} · ${suffix}` : activityLabel;
 
     const payload: PlanIn = {
       activity_type: values.activity_type as ActivityType,
@@ -138,9 +133,9 @@ export default function CreatePlanPage() {
       window_minutes: values.window_minutes,
       max_participants: values.max_participants,
       title: finalTitle,
-      description: null,
+      description: values.description?.trim() ? values.description : null,
       location: {
-        label: values.location.label,
+        label: suffix || '—',
         lat: gps.location?.[0] ?? values.location.lat,
         lng: gps.location?.[1] ?? values.location.lng,
       },
@@ -316,6 +311,22 @@ export default function CreatePlanPage() {
 
           {showAdvanced && (
             <div className="flex flex-col gap-5 animate-in fade-in duration-200">
+              {/* Más detalles (campo description) */}
+              <section className="flex flex-col gap-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Más detalles
+                </label>
+                <Textarea
+                  placeholder="Opcional"
+                  maxLength={1000}
+                  rows={3}
+                  {...register('description')}
+                />
+                {errors.description && (
+                  <p className="text-xs text-red-500 mt-1">{errors.description.message as string}</p>
+                )}
+              </section>
+
               {/* Participantes */}
               <section className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
