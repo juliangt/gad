@@ -161,11 +161,7 @@ export default function CreatePlanPage() {
         />
       </div>
 
-      {/* Backdrop solo sobre el área del sheet (pointer-events-none para no bloquear el mapa) */}
-      <div
-        className="absolute inset-x-0 bottom-0 top-[12vh] bg-black/20 backdrop-blur-[2px] z-10 pointer-events-none"
-        aria-hidden="true"
-      />
+
 
       {/* Modal / Bottom Sheet */}
       <div
