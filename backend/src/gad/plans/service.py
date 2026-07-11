@@ -82,16 +82,23 @@ async def update_plan(session: AsyncSession, plan: Plan, data) -> Plan:
     if "hidden" in dump and dump["hidden"] is not None:
         plan.hidden_by_host = bool(dump["hidden"])
 
-    # El resto de los campos solo se pueden editar si el plan está abierto
+    # Los demás campos solo se pueden editar si el plan está abierto.
+    # description se maneja aparte: distinguimos "campo ausente" de
+    # "campo explícitamente null" para permitir vaciar la descripción.
     editable_fields = {
         "title": dump.get("title"),
-        "description": dump.get("description"),
         "scheduled_at": dump.get("scheduled_at"),
         "max_participants": dump.get("max_participants"),
         "search_radius_m": dump.get("search_radius_m"),
+        "activity_type": dump.get("activity_type"),
+        "mode": dump.get("mode"),
+        "window_minutes": dump.get("window_minutes"),
     }
     has_edits = any(v is not None for v in editable_fields.values())
-    if has_edits:
+    has_description_edit = "description" in dump
+    has_location_edit = dump.get("location") is not None
+
+    if has_edits or has_description_edit or has_location_edit:
         if plan.status != PlanStatus.open:
             raise ConflictError("Solo se pueden editar planes abiertos")
         if (
@@ -101,9 +108,31 @@ async def update_plan(session: AsyncSession, plan: Plan, data) -> Plan:
             raise ConflictError(
                 "max_participants no puede ser menor a los participantes actuales"
             )
+
+        # Campos simples
         for field, value in editable_fields.items():
             if value is not None:
                 setattr(plan, field, value)
+
+        # description: permite setear a None (vaciar) si vino explícitamente
+        if has_description_edit:
+            plan.description = dump["description"]
+
+        # location: re-snap coords y actualizar grid + label
+        if has_location_edit:
+            loc = dump["location"]
+            grid_lat, grid_lng = snap_to_grid(loc["lat"], loc["lng"])
+            plan.location_grid = _to_geography(grid_lat, grid_lng)
+            plan.location_label = loc["label"]
+
+        # Recalcular expires_at si cambiaron mode, scheduled_at o window_minutes.
+        # Usa los valores finales del plan (ya aplicados arriba).
+        recalc_keys = {"mode", "scheduled_at", "window_minutes"}
+        if recalc_keys & set(dump):
+            base = plan.scheduled_at if plan.mode == PlanMode.scheduled else datetime.now(UTC)
+            if plan.mode == PlanMode.scheduled and plan.scheduled_at is None:
+                raise ConflictError("scheduled_at es requerido cuando mode=scheduled")
+            plan.expires_at = base + timedelta(minutes=plan.window_minutes)
 
     await session.commit()
     await session.refresh(plan)

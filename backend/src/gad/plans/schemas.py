@@ -37,6 +37,10 @@ class PlanUpdateIn(BaseModel):
     scheduled_at: datetime | None = None
     max_participants: int | None = Field(default=None, ge=1, le=10)
     search_radius_m: int | None = Field(default=None, ge=100, le=50000)
+    activity_type: ActivityType | None = None
+    mode: PlanMode | None = None
+    window_minutes: int | None = Field(default=None, ge=15, le=1440)
+    location: PlanLocationIn | None = None
     hidden: bool | None = None
 
 

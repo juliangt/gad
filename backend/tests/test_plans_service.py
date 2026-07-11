@@ -334,3 +334,128 @@ async def test_list_my_plans_status_filter(db_session):
     )
     assert len(result) == 0  # no hay cancelados visibles
 
+
+
+@pytest.mark.asyncio
+async def test_update_plan_changes_activity_type(db_session):
+    from gad.plans.schemas import PlanUpdateIn
+    from gad.plans.service import update_plan
+
+    host = await _make_host(db_session)
+    plan = await create_plan(
+        db_session,
+        host,
+        PlanIn(
+            activity_type=ActivityType.coffee,
+            mode=PlanMode.now,
+            title="Café",
+            location=PlanLocationIn(lat=-34.59, lng=-58.43, label="Palermo"),
+        ),
+    )
+    updated = await update_plan(
+        db_session, plan, PlanUpdateIn(activity_type=ActivityType.drinks)
+    )
+    assert updated.activity_type == ActivityType.drinks
+
+
+@pytest.mark.asyncio
+async def test_update_plan_location_re_snaps_coords(db_session):
+    from gad.plans.schemas import PlanLocationIn, PlanUpdateIn
+    from gad.plans.service import update_plan
+
+    host = await _make_host(db_session)
+    plan = await create_plan(
+        db_session,
+        host,
+        PlanIn(
+            activity_type=ActivityType.coffee,
+            mode=PlanMode.now,
+            title="Café",
+            location=PlanLocationIn(lat=-34.59, lng=-58.43, label="Palermo"),
+        ),
+    )
+    updated = await update_plan(
+        db_session,
+        plan,
+        PlanUpdateIn(
+            location=PlanLocationIn(lat=-34.60, lng=-58.44, label="Caballito")
+        ),
+    )
+    assert updated.location_label == "Caballito"
+
+
+@pytest.mark.asyncio
+async def test_update_plan_window_recalculates_expires(db_session):
+    from gad.plans.schemas import PlanUpdateIn
+    from gad.plans.service import update_plan
+
+    host = await _make_host(db_session)
+    plan = await create_plan(
+        db_session,
+        host,
+        PlanIn(
+            activity_type=ActivityType.coffee,
+            mode=PlanMode.now,
+            window_minutes=120,
+            title="Café",
+            location=PlanLocationIn(lat=-34.59, lng=-58.43, label="Palermo"),
+        ),
+    )
+    old_expires = plan.expires_at
+    updated = await update_plan(
+        db_session, plan, PlanUpdateIn(window_minutes=60)
+    )
+    # 60 min en vez de 120 → expira antes
+    assert updated.expires_at < old_expires
+
+
+@pytest.mark.asyncio
+async def test_update_plan_mode_to_scheduled_recalculates_expires(db_session):
+    from gad.plans.schemas import PlanUpdateIn
+    from gad.plans.service import update_plan
+
+    host = await _make_host(db_session)
+    plan = await create_plan(
+        db_session,
+        host,
+        PlanIn(
+            activity_type=ActivityType.coffee,
+            mode=PlanMode.now,
+            window_minutes=120,
+            title="Café",
+            location=PlanLocationIn(lat=-34.59, lng=-58.43, label="Palermo"),
+        ),
+    )
+    scheduled = datetime.now(UTC) + timedelta(days=1)
+    updated = await update_plan(
+        db_session,
+        plan,
+        PlanUpdateIn(mode=PlanMode.scheduled, scheduled_at=scheduled),
+    )
+    assert updated.mode == PlanMode.scheduled
+    assert updated.scheduled_at == scheduled
+    # expires_at debe basarse en scheduled_at + window_minutes
+    assert updated.expires_at >= scheduled + timedelta(minutes=119)
+
+
+@pytest.mark.asyncio
+async def test_update_plan_can_clear_description(db_session):
+    """Setear description a null explícitamente debe vaciarla."""
+    from gad.plans.schemas import PlanUpdateIn
+    from gad.plans.service import update_plan
+
+    host = await _make_host(db_session)
+    plan = await create_plan(
+        db_session,
+        host,
+        PlanIn(
+            activity_type=ActivityType.coffee,
+            mode=PlanMode.now,
+            title="Café",
+            description="Una descripción",
+            location=PlanLocationIn(lat=-34.59, lng=-58.43, label="Palermo"),
+        ),
+    )
+    assert plan.description == "Una descripción"
+    updated = await update_plan(db_session, plan, PlanUpdateIn(description=None))
+    assert updated.description is None
