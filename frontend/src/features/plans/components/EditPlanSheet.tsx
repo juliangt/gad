@@ -5,6 +5,9 @@ import { X } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Textarea } from '../../../components/ui/Textarea';
+import { ParticipantPicker } from './ParticipantPicker';
+import { RadiusPicker } from './RadiusPicker';
+import { SchedulePicker } from './SchedulePicker';
 import { planUpdateInSchema, type PlanUpdateForm } from '../schemas';
 import { useUpdatePlan } from '../hooks';
 import type { PlanOut } from '../types';
@@ -22,6 +25,7 @@ export function EditPlanSheet({ plan, onClose, onSaved }: Props) {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<PlanUpdateForm>({
     resolver: zodResolver(planUpdateInSchema),
@@ -57,7 +61,7 @@ export function EditPlanSheet({ plan, onClose, onSaved }: Props) {
         className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       />
-      <div className="relative bg-white w-full rounded-t-3xl p-6 pb-safe-bottom flex flex-col gap-4 animate-in slide-in-from-bottom-full duration-300 shadow-2xl max-h-[80vh] overflow-y-auto hide-scrollbar">
+      <div className="relative bg-white w-full rounded-t-3xl p-6 pb-safe-bottom flex flex-col gap-4 animate-in slide-in-from-bottom-full duration-300 shadow-2xl max-h-[85vh] overflow-y-auto hide-scrollbar">
         <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto -mt-2 mb-1" />
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-900">Editar plan</h2>
@@ -96,68 +100,44 @@ export function EditPlanSheet({ plan, onClose, onSaved }: Props) {
             )}
           </div>
 
+          {/* Fecha/hora — solo si el plan es agendado */}
+          {plan.mode === 'scheduled' && (
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Fecha y hora
+              </label>
+              <SchedulePicker
+                value={watch('scheduled_at') ?? null}
+                onChange={(iso) => setValue('scheduled_at', iso, { shouldValidate: true })}
+              />
+            </div>
+          )}
+
           <div className="flex flex-col gap-2">
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Fecha y hora (solo si es agendado)
+              Cuánta gente busco
             </label>
-            <Input
-              type="datetime-local"
-              invalid={!!errors.scheduled_at}
-              defaultValue={
-                plan.scheduled_at
-                  ? new Date(plan.scheduled_at).toISOString().slice(0, 16)
-                  : undefined
-              }
-              onChange={(e) => {
-                const v = e.target.value;
-                setValue('scheduled_at', v ? new Date(v).toISOString() : null, {
-                  shouldValidate: true,
-                });
-              }}
+            <ParticipantPicker
+              value={watch('max_participants') ?? plan.max_participants}
+              onChange={(v) => setValue('max_participants', v, { shouldValidate: true })}
             />
-            {errors.scheduled_at && (
-              <p className="text-xs text-red-500 mt-1">{errors.scheduled_at.message as string}</p>
+            {plan.current_participants > 0 && (
+              <p className="text-xs text-gray-400">
+                Hay {plan.current_participants} participante
+                {plan.current_participants === 1 ? '' : 's'} aceptado
+                {plan.current_participants === 1 ? '' : 's'}.
+              </p>
             )}
           </div>
 
           <div className="flex flex-col gap-2">
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Cupo máximo (1–10)
+              Radio de búsqueda
             </label>
-            <Input
-              type="number"
-              min={1}
-              max={10}
-              {...register('max_participants', { valueAsNumber: true })}
-              invalid={!!errors.max_participants}
+            <RadiusPicker
+              value={watch('search_radius_m') ?? plan.search_radius_m}
+              onChange={(v) => setValue('search_radius_m', v, { shouldValidate: true })}
             />
-            {errors.max_participants && (
-              <p className="text-xs text-red-500 mt-1">
-                {errors.max_participants.message as string}
-              </p>
-            )}
-            <p className="text-xs text-gray-400">
-              No puede ser menor a los ya aceptados ({plan.current_participants}).
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Radio de búsqueda (metros, 100–50000)
-            </label>
-            <Input
-              type="number"
-              min={100}
-              max={50000}
-              step={100}
-              {...register('search_radius_m', { valueAsNumber: true })}
-              invalid={!!errors.search_radius_m}
-            />
-            {errors.search_radius_m && (
-              <p className="text-xs text-red-500 mt-1">
-                {errors.search_radius_m.message as string}
-              </p>
-            )}
           </div>
 
           <Button type="submit" disabled={updatePlan.isPending}>
