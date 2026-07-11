@@ -1,7 +1,7 @@
 // frontend/src/features/plans/pages/ExplorePage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LocateFixed, Navigation, SlidersHorizontal } from 'lucide-react';
+import { LocateFixed, Plus, SlidersHorizontal } from 'lucide-react';
 import { MapBackground } from '../../../components/MapBackground';
 import { Spinner } from '../../../components/ui/Spinner';
 import { ErrorState } from '../../../components/ui/ErrorState';
@@ -193,7 +193,7 @@ export default function ExplorePage() {
           className="bg-gray-900 text-white shadow-xl shadow-gray-900/20 w-14 h-14 rounded-full flex items-center justify-center transform transition-transform active:scale-95 border border-gray-800"
           aria-label="Crear plan"
         >
-          <Navigation className="w-6 h-6 fill-current" />
+          <Plus className="w-6 h-6" />
         </button>
       </div>
     </div>
