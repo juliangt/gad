@@ -8,9 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from gad.availability.alerts import notify_matching_users
 from gad.availability.matcher import find_matching_availability
 from gad.exceptions import ConflictError, NotFoundError
-from gad.models.enums import ActivityType, PlanMode, PlanStatus
+from gad.models.enums import ActivityType, ApplicationStatus, PlanMode, PlanStatus
 from gad.models.geo import snap_to_grid
-from gad.models.plan import Plan
+from gad.models.plan import Plan, PlanApplication
 from gad.models.social import Block
 from gad.models.user import User
 from gad.plans.schemas import PlanIn
@@ -67,22 +67,45 @@ async def get_plan(session: AsyncSession, plan_id) -> Plan:
 
 async def cancel_plan(session: AsyncSession, plan: Plan) -> Plan:
     plan.status = PlanStatus.cancelled
+    plan.hidden_by_host = True
     await session.commit()
     await session.refresh(plan)
     return plan
 
 
 async def update_plan(session: AsyncSession, plan: Plan, data) -> Plan:
-    if plan.status != PlanStatus.open:
-        raise ConflictError("Solo se pueden editar planes abiertos")
-    changed = False
-    for field, value in data.model_dump(exclude_unset=True).items():
-        if value is not None:
-            setattr(plan, field, value)
-            changed = True
-    if changed:
-        await session.commit()
-        await session.refresh(plan)
+    dump = data.model_dump(exclude_unset=True)
+
+    # hidden_by_host se puede cambiar independientemente del status
+    # (es solo visibilidad para el host, no altera el ciclo de vida del plan).
+    if "hidden" in dump and dump["hidden"] is not None:
+        plan.hidden_by_host = bool(dump["hidden"])
+
+    # El resto de los campos solo se pueden editar si el plan está abierto
+    editable_fields = {
+        "title": dump.get("title"),
+        "description": dump.get("description"),
+        "scheduled_at": dump.get("scheduled_at"),
+        "max_participants": dump.get("max_participants"),
+        "search_radius_m": dump.get("search_radius_m"),
+    }
+    has_edits = any(v is not None for v in editable_fields.values())
+    if has_edits:
+        if plan.status != PlanStatus.open:
+            raise ConflictError("Solo se pueden editar planes abiertos")
+        if (
+            editable_fields["max_participants"] is not None
+            and editable_fields["max_participants"] < plan.current_participants
+        ):
+            raise ConflictError(
+                "max_participants no puede ser menor a los participantes actuales"
+            )
+        for field, value in editable_fields.items():
+            if value is not None:
+                setattr(plan, field, value)
+
+    await session.commit()
+    await session.refresh(plan)
     return plan
 
 
@@ -125,4 +148,47 @@ async def list_nearby_plans(
 
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def list_my_plans(
+    session: AsyncSession,
+    *,
+    host_id,
+    status_filter: list[PlanStatus] | None = None,
+    limit: int = 50,
+    before: datetime | None = None,
+    include_hidden: bool = False,
+) -> list[tuple[Plan, int]]:
+    """Devuelve los planes creados por host_id con su contador de
+    postulaciones pendientes. Ordenados por created_at desc.
+
+    Paginación por cursor: `before` es el created_at del último item de la
+    página anterior (mismo patrón que list_my_applications).
+
+    Por defecto excluye los hidden_by_host (el host los "eliminó" de su vista).
+    """
+    # Subquery: cantidad de postulaciones pendientes por plan
+    pending_subq = (
+        select(PlanApplication.plan_id, func.count().label("pending_count"))
+        .where(PlanApplication.status == ApplicationStatus.pending)
+        .group_by(PlanApplication.plan_id)
+        .subquery()
+    )
+
+    stmt = (
+        select(Plan, func.coalesce(pending_subq.c.pending_count, 0))
+        .outerjoin(pending_subq, pending_subq.c.plan_id == Plan.id)
+        .where(Plan.host_id == host_id)
+        .order_by(Plan.created_at.desc())
+        .limit(limit)
+    )
+    if not include_hidden:
+        stmt = stmt.where(Plan.hidden_by_host.is_(False))
+    if status_filter:
+        stmt = stmt.where(Plan.status.in_(status_filter))
+    if before is not None:
+        stmt = stmt.where(Plan.created_at < before)
+
+    result = await session.execute(stmt)
+    return [(row[0], row[1]) for row in result.all()]
 
