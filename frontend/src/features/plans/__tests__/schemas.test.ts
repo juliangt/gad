@@ -37,8 +37,8 @@ describe('planInSchema', () => {
     expect(() => planInSchema.parse({ ...validBase, title: 'x'.repeat(201) })).toThrow();
   });
 
-  it('rechaza description > 1000', () => {
-    expect(() => planInSchema.parse({ ...validBase, description: 'x'.repeat(1001) })).toThrow();
+  it('rechaza description > 2000', () => {
+    expect(() => planInSchema.parse({ ...validBase, description: 'x'.repeat(2001) })).toThrow();
   });
 
   it('rechaza activity_type inválido', () => {
@@ -102,8 +102,8 @@ describe('planUpdateInSchema', () => {
     expect(() => planUpdateInSchema.parse({ title: '' })).toThrow();
   });
 
-  it('rechaza description > 1000', () => {
-    expect(() => planUpdateInSchema.parse({ description: 'x'.repeat(1001) })).toThrow();
+  it('rechaza description > 2000', () => {
+    expect(() => planUpdateInSchema.parse({ description: 'x'.repeat(2001) })).toThrow();
   });
 
   it('rechaza scheduled_at inválido', () => {

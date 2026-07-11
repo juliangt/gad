@@ -15,6 +15,7 @@ import UserPublicPage from './features/users/pages/UserPublicPage';
 import { RequireAdminRoute } from './features/admin/RequireAdminRoute';
 
 const ExplorePage = lazy(() => import('./features/plans/pages/ExplorePage'));
+const PlansPage = lazy(() => import('./features/plans/pages/PlansPage'));
 const CreatePlanPage = lazy(() => import('./features/plans/pages/CreatePlanPage'));
 const PlanDetailPage = lazy(() => import('./features/plans/pages/PlanDetailPage'));
 const ApplicationsPage = lazy(() => import('./features/matching/pages/ApplicationsPage'));
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
         children: [
           { path: '/', element: <Navigate to="/explore" replace /> },
           { path: '/explore', element: <PageSuspense><ExplorePage /></PageSuspense> },
+          { path: '/plans', element: <PageSuspense><PlansPage /></PageSuspense> },
           { path: '/matches', element: <PageSuspense><MatchesPage /></PageSuspense> },
           { path: '/me', element: <ProfilePage /> },
         ],

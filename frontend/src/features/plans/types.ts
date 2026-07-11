@@ -34,8 +34,11 @@ export interface PlanIn {
 /** Body de PATCH /plans/{id} (PlanUpdateIn en el contrato). Todos opcionales. */
 export interface PlanUpdateIn {
   title?: string; // 1..200
-  description?: string | null; // ..1000
+  description?: string | null; // ..2000
   scheduled_at?: string | null; // ISO 8601
+  max_participants?: number; // 1..10
+  search_radius_m?: number; // 100..50000
+  hidden?: boolean;
 }
 
 /** Respuesta de GET /plans/{id}, POST /plans, PATCH /plans/{id}, DELETE /plans/{id}. */
@@ -65,6 +68,17 @@ export interface PlanOut {
  * Por eso `usePlans` usa `useQuery` (array directo), no `useInfiniteQuery`.
  */
 export type PlanListItem = PlanOut;
+
+/** Item de GET /me/plans — plan propio + postulaciones pendientes. */
+export interface MyPlanItem extends PlanOut {
+  pending_applications_count: number;
+}
+
+/** Respuesta paginada de GET /me/plans (PaginatedOut<MyPlanItem>). */
+export interface MyPlansPage {
+  items: MyPlanItem[];
+  next_cursor: string | null;
+}
 
 /** Filtros de UI aplicables a GET /plans. `lat`/`lng` son obligatorios. */
 export interface PlansQuery {

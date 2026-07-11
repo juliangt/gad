@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 from geoalchemy2 import Geography
 from sqlalchemy import (
+    Boolean,
     DateTime,
     Enum,
     ForeignKey,
@@ -57,6 +58,9 @@ class Plan(Base, TimestampMixin):
     )
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
+    )
+    hidden_by_host: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
     )
 
 

@@ -29,9 +29,13 @@ from gad.matching.service import (
     reject_application,
     withdraw_application,
 )
+from gad.models.enums import PlanStatus
 from gad.models.match import MatchParticipant
-from gad.models.plan import PlanApplication
+from gad.models.plan import Plan, PlanApplication
 from gad.models.user import User
+from gad.plans.router import _plan_to_out
+from gad.plans.schemas import MyPlanItem
+from gad.plans.service import list_my_plans
 from gad.schemas.pagination import PaginatedOut
 
 router = APIRouter(tags=["matching"])
@@ -55,6 +59,13 @@ async def _app_to_out(session: AsyncSession, app: PlanApplication) -> Applicatio
         created_at=app.created_at,
         decided_at=app.decided_at,
     )
+
+
+async def _plan_to_my_item(
+    session: AsyncSession, plan: Plan, pending_count: int
+) -> MyPlanItem:
+    base = await _plan_to_out(session, plan)
+    return MyPlanItem(**base.model_dump(), pending_applications_count=pending_count)
 
 
 async def _match_to_out(session: AsyncSession, match, viewer: User) -> MatchOut:
@@ -173,6 +184,32 @@ async def my_applications_endpoint(
     items = [await _app_to_out(session, a) for a in apps]
     next_cursor = items[-1].created_at.isoformat() if len(items) == limit and items else None
     return PaginatedOut[ApplicationOut](items=items, next_cursor=next_cursor)
+
+
+@router.get("/me/plans", response_model=PaginatedOut[MyPlanItem])
+async def my_plans_endpoint(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    status: str | None = Query(
+        default=None,
+        description="Filtro por estados (csv: open,matched,closed,cancelled,expired)",
+    ),
+    limit: int = Query(default=50, ge=1, le=100),
+    before: datetime | None = Query(default=None),
+) -> PaginatedOut[MyPlanItem]:
+    status_filter: list[PlanStatus] | None = None
+    if status:
+        status_filter = [PlanStatus(s) for s in status.split(",")]
+    rows = await list_my_plans(
+        session,
+        host_id=current_user.id,
+        status_filter=status_filter,
+        limit=limit,
+        before=before,
+    )
+    items = [await _plan_to_my_item(session, plan, count) for plan, count in rows]
+    next_cursor = items[-1].created_at.isoformat() if len(items) == limit and items else None
+    return PaginatedOut[MyPlanItem](items=items, next_cursor=next_cursor)
 
 
 @router.get("/matches", response_model=PaginatedOut[MatchOut])

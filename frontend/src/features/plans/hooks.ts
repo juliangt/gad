@@ -1,5 +1,6 @@
 // frontend/src/features/plans/hooks.ts
 import {
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -11,11 +12,11 @@ import {
   PLAN_CREATE_RATE_LIMIT_PER_HOUR,
 } from './constants';
 import type {
+  MyPlansPage,
   PlanIn,
   PlanListItem,
   PlanOut,
   PlansQuery,
-  PlanUpdateIn,
 } from './types';
 
 /** Query params numéricos como espera el wrapper api/client ({ query }). */
@@ -51,6 +52,21 @@ export function usePlans(
   });
 }
 
+/** GET /me/plans — mis planes creados, paginado por cursor. */
+export function useMyPlans() {
+  return useInfiniteQuery({
+    queryKey: ['me', 'plans'],
+    queryFn: ({ pageParam }: { pageParam?: string }) => {
+      const query: Record<string, number | string> = { limit: 50 };
+      if (pageParam) query.before = pageParam;
+      return apiGet<MyPlansPage>('/me/plans', { query });
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage: MyPlansPage) => lastPage.next_cursor ?? undefined,
+    staleTime: 30_000,
+  });
+}
+
 /** GET /plans/{id} */
 export function usePlan(planId: string | undefined) {
   return useQuery({
@@ -83,31 +99,33 @@ export function useCreatePlan() {
   });
 }
 
-/** PATCH /plans/{id} — solo host. */
+/** PATCH /plans/{id} — solo host. Acepta el plan completo (PlanIn). */
 export function useUpdatePlan(planId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: PlanUpdateIn) =>
+    mutationFn: (input: Partial<PlanIn>) =>
       apiPatch<PlanOut>(`/plans/${planId}`, input),
     onSuccess: (plan) => {
       qc.setQueryData(['plans', planId], plan);
       qc.invalidateQueries({ queryKey: ['plans', planId] });
       qc.invalidateQueries({ queryKey: ['plans'] });
+      qc.invalidateQueries({ queryKey: ['me', 'plans'] });
       toast.success('Plan actualizado');
     },
     onError: () => toast.error('No se pudo actualizar el plan.'),
   });
 }
 
-/** DELETE /plans/{id} — cancela (host). */
+/** DELETE /plans/{id} — cancela y oculta el plan del host (soft-delete). */
 export function useCancelPlan() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (planId: string) => apiDelete<PlanOut>(`/plans/${planId}`),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['me', 'plans'] });
       qc.invalidateQueries({ queryKey: ['plans'] });
-      toast.success('Plan cancelado');
+      toast.success('Plan eliminado');
     },
-    onError: () => toast.error('No se pudo cancelar el plan.'),
+    onError: () => toast.error('No se pudo eliminar el plan.'),
   });
 }

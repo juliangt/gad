@@ -20,7 +20,7 @@ class PlanIn(BaseModel):
     window_minutes: int = Field(default=120, ge=15, le=1440)
     max_participants: int = Field(default=1, ge=1, le=10)
     title: str = Field(min_length=1, max_length=200)
-    description: str | None = Field(default=None, max_length=1000)
+    description: str | None = Field(default=None, max_length=2000)
     location: PlanLocationIn
     search_radius_m: int = Field(default=2000, ge=100, le=50000)
 
@@ -35,6 +35,13 @@ class PlanUpdateIn(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
     scheduled_at: datetime | None = None
+    max_participants: int | None = Field(default=None, ge=1, le=10)
+    search_radius_m: int | None = Field(default=None, ge=100, le=50000)
+    activity_type: ActivityType | None = None
+    mode: PlanMode | None = None
+    window_minutes: int | None = Field(default=None, ge=15, le=1440)
+    location: PlanLocationIn | None = None
+    hidden: bool | None = None
 
 
 class HostSummary(BaseModel):
@@ -68,3 +75,8 @@ class PlanOut(BaseModel):
 
 class PlanListItem(PlanOut):
     pass
+
+
+class MyPlanItem(PlanOut):
+    """Plan creado por el usuario + contador de postulaciones pendientes."""
+    pending_applications_count: int

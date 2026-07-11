@@ -1,5 +1,6 @@
 # backend/src/gad/plans/service.py
 from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import func, select
@@ -8,9 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from gad.availability.alerts import notify_matching_users
 from gad.availability.matcher import find_matching_availability
 from gad.exceptions import ConflictError, NotFoundError
-from gad.models.enums import ActivityType, PlanMode, PlanStatus
+from gad.models.enums import ActivityType, ApplicationStatus, PlanMode, PlanStatus
 from gad.models.geo import snap_to_grid
-from gad.models.plan import Plan
+from gad.models.plan import Plan, PlanApplication
 from gad.models.social import Block
 from gad.models.user import User
 from gad.plans.schemas import PlanIn
@@ -67,22 +68,74 @@ async def get_plan(session: AsyncSession, plan_id) -> Plan:
 
 async def cancel_plan(session: AsyncSession, plan: Plan) -> Plan:
     plan.status = PlanStatus.cancelled
+    plan.hidden_by_host = True
     await session.commit()
     await session.refresh(plan)
     return plan
 
 
 async def update_plan(session: AsyncSession, plan: Plan, data) -> Plan:
-    if plan.status != PlanStatus.open:
-        raise ConflictError("Solo se pueden editar planes abiertos")
-    changed = False
-    for field, value in data.model_dump(exclude_unset=True).items():
-        if value is not None:
-            setattr(plan, field, value)
-            changed = True
-    if changed:
-        await session.commit()
-        await session.refresh(plan)
+    dump = data.model_dump(exclude_unset=True)
+
+    # hidden_by_host se puede cambiar independientemente del status
+    # (es solo visibilidad para el host, no altera el ciclo de vida del plan).
+    if "hidden" in dump and dump["hidden"] is not None:
+        plan.hidden_by_host = bool(dump["hidden"])
+
+    # Los demás campos solo se pueden editar si el plan está abierto.
+    # description se maneja aparte: distinguimos "campo ausente" de
+    # "campo explícitamente null" para permitir vaciar la descripción.
+    editable_fields = {
+        "title": dump.get("title"),
+        "scheduled_at": dump.get("scheduled_at"),
+        "max_participants": dump.get("max_participants"),
+        "search_radius_m": dump.get("search_radius_m"),
+        "activity_type": dump.get("activity_type"),
+        "mode": dump.get("mode"),
+        "window_minutes": dump.get("window_minutes"),
+    }
+    has_edits = any(v is not None for v in editable_fields.values())
+    has_description_edit = "description" in dump
+    has_location_edit = dump.get("location") is not None
+
+    if has_edits or has_description_edit or has_location_edit:
+        if plan.status != PlanStatus.open:
+            raise ConflictError("Solo se pueden editar planes abiertos")
+        if (
+            editable_fields["max_participants"] is not None
+            and editable_fields["max_participants"] < plan.current_participants
+        ):
+            raise ConflictError(
+                "max_participants no puede ser menor a los participantes actuales"
+            )
+
+        # Campos simples
+        for field, value in editable_fields.items():
+            if value is not None:
+                setattr(plan, field, value)
+
+        # description: permite setear a None (vaciar) si vino explícitamente
+        if has_description_edit:
+            plan.description = dump["description"]
+
+        # location: re-snap coords y actualizar grid + label
+        if has_location_edit:
+            loc = dump["location"]
+            grid_lat, grid_lng = snap_to_grid(loc["lat"], loc["lng"])
+            plan.location_grid = _to_geography(grid_lat, grid_lng)
+            plan.location_label = loc["label"]
+
+        # Recalcular expires_at si cambiaron mode, scheduled_at o window_minutes.
+        # Usa los valores finales del plan (ya aplicados arriba).
+        recalc_keys = {"mode", "scheduled_at", "window_minutes"}
+        if recalc_keys & set(dump):
+            base = plan.scheduled_at if plan.mode == PlanMode.scheduled else datetime.now(UTC)
+            if plan.mode == PlanMode.scheduled and plan.scheduled_at is None:
+                raise ConflictError("scheduled_at es requerido cuando mode=scheduled")
+            plan.expires_at = base + timedelta(minutes=plan.window_minutes)
+
+    await session.commit()
+    await session.refresh(plan)
     return plan
 
 
@@ -125,4 +178,47 @@ async def list_nearby_plans(
 
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def list_my_plans(
+    session: AsyncSession,
+    *,
+    host_id: UUID,
+    status_filter: list[PlanStatus] | None = None,
+    limit: int = 50,
+    before: datetime | None = None,
+    include_hidden: bool = False,
+) -> list[tuple[Plan, int]]:
+    """Devuelve los planes creados por host_id con su contador de
+    postulaciones pendientes. Ordenados por created_at desc.
+
+    Paginación por cursor: `before` es el created_at del último item de la
+    página anterior (mismo patrón que list_my_applications).
+
+    Por defecto excluye los hidden_by_host (el host los "eliminó" de su vista).
+    """
+    # Subquery: cantidad de postulaciones pendientes por plan
+    pending_subq = (
+        select(PlanApplication.plan_id, func.count().label("pending_count"))
+        .where(PlanApplication.status == ApplicationStatus.pending)
+        .group_by(PlanApplication.plan_id)
+        .subquery()
+    )
+
+    stmt = (
+        select(Plan, func.coalesce(pending_subq.c.pending_count, 0))
+        .outerjoin(pending_subq, pending_subq.c.plan_id == Plan.id)
+        .where(Plan.host_id == host_id)
+        .order_by(Plan.created_at.desc())
+        .limit(limit)
+    )
+    if not include_hidden:
+        stmt = stmt.where(Plan.hidden_by_host.is_(False))
+    if status_filter:
+        stmt = stmt.where(Plan.status.in_(status_filter))
+    if before is not None:
+        stmt = stmt.where(Plan.created_at < before)
+
+    result = await session.execute(stmt)
+    return [(row[0], row[1]) for row in result.all()]
 

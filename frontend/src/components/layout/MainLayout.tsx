@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { Search, MessageCircle, User } from 'lucide-react';
+import { Search, MessageCircle, ClipboardList, User } from 'lucide-react';
 
 export function MainLayout() {
   return (
@@ -22,6 +22,18 @@ export function MainLayout() {
           >
             <Search className="w-6 h-6 stroke-[2.5]" />
             <span>Explorar</span>
+          </NavLink>
+
+          <NavLink
+            to="/plans"
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors ${
+                isActive ? 'text-brand-600' : 'text-slate-400 hover:text-slate-600'
+              }`
+            }
+          >
+            <ClipboardList className="w-6 h-6 stroke-[2]" />
+            <span>Planes</span>
           </NavLink>
 
           <NavLink

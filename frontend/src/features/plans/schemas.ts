@@ -45,8 +45,11 @@ export type PlanInForm = z.infer<typeof planInSchema>;
 export const planUpdateInSchema = z
   .object({
     title: z.string().min(1).max(200).optional(),
-    description: z.union([z.string().max(1000), z.null()]).optional(),
+    description: z.union([z.string().max(2000), z.null()]).optional(),
     scheduled_at: z.union([z.string().datetime(), z.null()]).optional(),
+    max_participants: z.number().int().min(1).max(10).optional(),
+    search_radius_m: z.number().int().min(100).max(50000).optional(),
+    hidden: z.boolean().optional(),
   })
   .strict();
 
