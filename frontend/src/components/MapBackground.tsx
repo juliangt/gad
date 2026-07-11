@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, Circle, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, Circle, useMapEvents, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { cn } from '../lib/utils';
+import { venueIcon } from '../features/venues/components/VenueMarker';
 
 // Using CartoDB Positron for a very clean, minimalist, light background
 const TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
@@ -81,11 +82,28 @@ interface PlanLocation {
   lng: number;
 }
 
+export interface VenueMarkerLocation {
+  id: string;
+  lat: number;
+  lng: number;
+  /** Datos del venue para el popup. Si se omite, el marker no tiene popup. */
+  venue?: {
+    name: string;
+    offers: Array<{
+      title: string;
+      description: string;
+      redemption_method: 'code' | 'qr' | 'mention';
+    }>;
+  };
+}
+
 export interface MapBackgroundProps {
   userLocation: [number, number] | null;
   plans: PlanLocation[];
+  venues?: VenueMarkerLocation[];
   className?: string;
   onPlanClick?: (planId: string) => void;
+  onVenueClick?: (venueId: string) => void;
   /** Si está definido, el mapa captura clicks para elegir un punto. */
   onMapClick?: (lat: number, lng: number) => void;
   /** Si está definido, dibuja un círculo de radio de búsqueda. */
@@ -97,8 +115,10 @@ export interface MapBackgroundProps {
 export function MapBackground({
   userLocation,
   plans,
+  venues = [],
   className,
   onPlanClick,
+  onVenueClick,
   onMapClick,
   circle,
   pickerMarker,
@@ -130,6 +150,40 @@ export function MapBackground({
               click: () => onPlanClick?.(plan.id)
             }}
           />
+        ))}
+        {venues.map((v) => (
+          <Marker
+            key={`venue-${v.id}`}
+            position={[v.lat, v.lng]}
+            icon={venueIcon}
+            eventHandlers={{
+              click: () => onVenueClick?.(v.id),
+            }}
+          >
+            {v.venue && (
+              <Popup>
+                <div className="flex flex-col gap-1 max-w-[200px]">
+                  <div className="flex items-center gap-1">
+                    <span className="font-semibold text-gray-900">{v.venue.name}</span>
+                    <span className="text-[10px] uppercase tracking-wide text-amber-600 font-bold">
+                      Sponsor
+                    </span>
+                  </div>
+                  {v.venue.offers[0] && (
+                    <>
+                      <p className="text-sm font-medium text-gray-800">
+                        {v.venue.offers[0].title}
+                      </p>
+                      <p className="text-xs text-gray-600">{v.venue.offers[0].description}</p>
+                    </>
+                  )}
+                  <p className="text-[10px] text-gray-400 italic mt-1">
+                    Oferta gestionada directamente con el local. GAD no se responsabiliza por su disponibilidad.
+                  </p>
+                </div>
+              </Popup>
+            )}
+          </Marker>
         ))}
         {onMapClick && <MapClickHandler onMapClick={onMapClick} />}
         {circle && (

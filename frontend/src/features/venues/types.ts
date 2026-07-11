@@ -2,7 +2,6 @@
 import type {
   ActivityType,
   OfferRedemption,
-  VenueStatus,
 } from '../../types/enums';
 
 export type { ActivityType, OfferRedemption, VenueStatus } from '../../types/enums';
