@@ -125,58 +125,63 @@ export default function ExplorePage() {
           {gps.location && (
             <AvailabilityToggle location={gps.location} radiusM={5000} />
           )}
-          <div className="flex items-center justify-between mb-1 px-1">
-            <h2 className="text-sm font-semibold text-gray-800 drop-shadow-sm">
-              Cerca de ti
-            </h2>
-            <span className="text-xs font-medium text-brand-600 bg-white/80 backdrop-blur px-2 py-0.5 rounded-full shadow-sm">
-              {plans?.length ?? 0} planes
-            </span>
+          <div className={cn(
+            'flex flex-col gap-3',
+            gps.location && !isLoading && !isError && (plans?.length ?? 0) === 0 && 'bg-white rounded-3xl p-5 shadow-lg border border-gray-100/80 pointer-events-auto',
+          )}>
+            <div className="flex items-center justify-between mb-1 px-1">
+              <h2 className="text-sm font-semibold text-gray-800 drop-shadow-sm">
+                Cerca de ti
+              </h2>
+              <span className="text-xs font-medium text-brand-600 bg-white/80 backdrop-blur px-2 py-0.5 rounded-full shadow-sm border border-gray-100">
+                {plans?.length ?? 0} planes
+              </span>
+            </div>
+
+            {gps.status === 'denied' && (
+              <div className="glass-panel rounded-2xl p-4 text-sm text-gray-700 flex flex-col gap-2 bg-white">
+                <p>
+                  Necesitamos tu ubicación para buscar planes cerca. Habilitá el permiso o
+                  ingresá un barrio.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void gps.request()}
+                  className="self-start text-brand-600 font-medium underline"
+                >
+                  Reintentar GPS
+                </button>
+              </div>
+            )}
+
+            {gps.location && isLoading && (
+              <div className="flex flex-col items-center gap-2 py-6">
+                <Spinner />
+                <p className="text-sm text-gray-500">Buscando planes...</p>
+              </div>
+            )}
+            {gps.location && isError && (
+              <ErrorState
+                message={(error as { detail?: string })?.detail ?? 'No se pudieron cargar los planes'}
+                onRetry={() => void refetch()}
+              />
+            )}
+            {gps.location && !isLoading && !isError && (plans?.length ?? 0) === 0 && (
+              <EmptyState
+                title="No hay planes cerca"
+                description="Sé el primero en crear uno con el botón +"
+              />
+            )}
+
+            {(plans ?? []).map((plan) => (
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                userLocation={gps.location}
+                onClick={(id) => navigate(`/plans/${id}`)}
+              />
+            ))}
           </div>
-
-          {gps.status === 'denied' && (
-            <div className="glass-panel rounded-2xl p-4 text-sm text-gray-700 flex flex-col gap-2">
-              <p>
-                Necesitamos tu ubicación para buscar planes cerca. Habilitá el permiso o
-                ingresá un barrio.
-              </p>
-              <button
-                type="button"
-                onClick={() => void gps.request()}
-                className="self-start text-brand-600 font-medium underline"
-              >
-                Reintentar GPS
-              </button>
-            </div>
-          )}
-
-          {gps.location && isLoading && (
-            <div className="flex flex-col items-center gap-2 py-6">
-              <Spinner />
-              <p className="text-sm text-gray-500">Buscando planes...</p>
-            </div>
-          )}
-          {gps.location && isError && (
-            <ErrorState
-              message={(error as { detail?: string })?.detail ?? 'No se pudieron cargar los planes'}
-              onRetry={() => void refetch()}
-            />
-          )}
-          {gps.location && !isLoading && !isError && (plans?.length ?? 0) === 0 && (
-            <EmptyState
-              title="No hay planes cerca"
-              description="Sé el primero en crear uno con el botón +"
-            />
-          )}
-
-          {(plans ?? []).map((plan) => (
-            <PlanCard
-              key={plan.id}
-              plan={plan}
-              userLocation={gps.location}
-              onClick={(id) => navigate(`/plans/${id}`)}
-            />
-          ))}
         </div>
       </div>
 
