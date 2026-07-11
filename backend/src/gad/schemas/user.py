@@ -14,6 +14,7 @@ from gad.models.enums import (
 
 class PreferencesIn(BaseModel):
     default_search_radius_m: int = Field(default=2000, ge=100, le=50000)
+    default_plan_validity_mins: int = Field(default=120, ge=0, le=1440)
     activity_types: list[str] = Field(default_factory=list)
     group_size_preference: GroupSizePreference = GroupSizePreference.either
     age_range_min: int = Field(default=18, ge=18, le=99)

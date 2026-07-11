@@ -30,9 +30,10 @@ export function PreferencesForm() {
     formState: { errors, isSubmitting },
   } = useForm<PreferencesFormValues>({
     resolver: zodResolver(preferencesSchema),
-    values: me
+        values: me
       ? {
           default_search_radius_m: me.preferences.default_search_radius_m,
+          default_plan_validity_mins: me.preferences.default_plan_validity_mins,
           activity_types: me.preferences.activity_types,
           group_size_preference: me.preferences.group_size_preference,
           age_range_min: me.preferences.age_range_min,
@@ -80,6 +81,25 @@ export function PreferencesForm() {
         </select>
         {errors.default_search_radius_m && (
           <p className="text-xs text-red-600 mt-1">{errors.default_search_radius_m.message}</p>
+        )}
+      </div>
+
+      <div>
+        <label htmlFor="default_plan_validity_mins" className={sectionLabelClass}>
+          Vigencia del plan por defecto
+        </label>
+        <select
+          id="default_plan_validity_mins"
+          className={selectClass}
+          {...register('default_plan_validity_mins', { valueAsNumber: true })}
+        >
+          <option value={60}>1 hora</option>
+          <option value={120}>2 horas</option>
+          <option value={180}>3 horas</option>
+          <option value={0}>Resto del día</option>
+        </select>
+        {errors.default_plan_validity_mins && (
+          <p className="text-xs text-red-600 mt-1">{errors.default_plan_validity_mins.message}</p>
         )}
       </div>
 

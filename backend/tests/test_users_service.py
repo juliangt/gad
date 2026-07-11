@@ -38,6 +38,7 @@ async def test_get_or_create_preferences_creates_if_missing(db_session):
     prefs = await get_or_create_preferences(db_session, user)
     assert prefs.user_id == user.id
     assert prefs.default_search_radius_m == 2000
+    assert prefs.default_plan_validity_mins == 120
 
 
 @pytest.mark.asyncio
@@ -62,7 +63,13 @@ async def test_update_preferences_persists(db_session):
     user = result.scalar_one()
 
     await update_preferences(
-        db_session, user, PreferencesIn(default_search_radius_m=5000, activity_types=["coffee"])
+        db_session,
+        user,
+        PreferencesIn(
+            default_search_radius_m=5000,
+            default_plan_validity_mins=180,
+            activity_types=["coffee"],
+        ),
     )
 
     result = await db_session.execute(
@@ -70,6 +77,7 @@ async def test_update_preferences_persists(db_session):
     )
     user = result.scalar_one()
     assert user.preferences.default_search_radius_m == 5000
+    assert user.preferences.default_plan_validity_mins == 180
     assert user.preferences.activity_types == ["coffee"]
 
 

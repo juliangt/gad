@@ -15,6 +15,7 @@ import { SchedulePicker } from '../components/SchedulePicker';
 import { PLAN_DEFAULTS, PLAN_MODES, ACTIVITY_META } from '../constants';
 import { planInSchema, type PlanInForm } from '../schemas';
 import { useCreatePlan } from '../hooks';
+import { useMe } from '../../users/hooks';
 import { useUserLocation } from '../useUserLocation';
 import { MapPicker } from '../components/MapPicker';
 import type { ActivityType, PlanIn, PlanMode } from '../types';
@@ -23,6 +24,7 @@ export default function CreatePlanPage() {
   const navigate = useNavigate();
   const gps = useUserLocation();
   const createPlan = useCreatePlan();
+  const { data: me } = useMe();
 
   useEffect(() => {
     void gps.request();
@@ -74,6 +76,22 @@ export default function CreatePlanPage() {
   const [selectedValidity, setSelectedValidity] = useState<
     60 | 120 | 180 | 'resto_del_dia'
   >(120);
+
+  // Cargar preferencias del usuario como valores por defecto al iniciar
+  useEffect(() => {
+    if (me?.preferences) {
+      const radius = me.preferences.default_search_radius_m;
+      if (radius) {
+        setValue('search_radius_m', radius);
+      }
+      const validity = me.preferences.default_plan_validity_mins;
+      if (validity === 0) {
+        setSelectedValidity('resto_del_dia');
+      } else if (validity === 60 || validity === 120 || validity === 180) {
+        setSelectedValidity(validity as any);
+      }
+    }
+  }, [me, setValue]);
 
   // Gesto de deslizar hacia abajo para cerrar
   const [dragStart, setDragStart] = useState<number | null>(null);

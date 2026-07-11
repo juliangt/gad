@@ -9,6 +9,7 @@ import type {
 /** GET /me → perfil completo del usuario autenticado. */
 export interface UserPreferences {
   default_search_radius_m: number;
+  default_plan_validity_mins: number;
   activity_types: ActivityType[];
   group_size_preference: GroupSizePreference;
   age_range_min: number;
@@ -38,6 +39,7 @@ export type PreferencesOut = UserPreferences;
 /** PUT /me/preferences body. Todos los campos opcionales según contrato. */
 export interface PreferencesIn {
   default_search_radius_m?: number;
+  default_plan_validity_mins?: number;
   activity_types?: ActivityType[];
   group_size_preference?: GroupSizePreference;
   age_range_min?: number;

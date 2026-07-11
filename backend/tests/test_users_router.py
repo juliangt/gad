@@ -85,11 +85,16 @@ async def test_put_preferences(client):
         token = await _register_and_get_token(c)
         resp = await c.put(
             "/me/preferences",
-            json={"default_search_radius_m": 5000, "activity_types": ["coffee"]},
+            json={
+                "default_search_radius_m": 5000,
+                "default_plan_validity_mins": 180,
+                "activity_types": ["coffee"],
+            },
             headers={"Authorization": f"Bearer {token}"},
         )
     assert resp.status_code == 200
     assert resp.json()["default_search_radius_m"] == 5000
+    assert resp.json()["default_plan_validity_mins"] == 180
 
 
 @pytest.mark.asyncio
