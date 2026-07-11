@@ -7,6 +7,7 @@ import { ForgotPasswordPage } from './auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './auth/pages/ResetPasswordPage';
 import { ChangePasswordPage } from './auth/pages/ChangePasswordPage';
 import { PageSuspense } from './components/layout/PageSuspense';
+import { MainLayout } from './components/layout/MainLayout';
 import ProfilePage from './features/users/pages/ProfilePage';
 import EditProfilePage from './features/users/pages/EditProfilePage';
 import BlockedUsersPage from './features/users/pages/BlockedUsersPage';
@@ -47,15 +48,20 @@ export const router = createBrowserRouter([
   {
     element: <RequireAuth />,
     children: [
-      { path: '/', element: <Navigate to="/explore" replace /> },
-      { path: '/explore', element: <PageSuspense><ExplorePage /></PageSuspense> },
+      {
+        element: <MainLayout />,
+        children: [
+          { path: '/', element: <Navigate to="/explore" replace /> },
+          { path: '/explore', element: <PageSuspense><ExplorePage /></PageSuspense> },
+          { path: '/matches', element: <PageSuspense><MatchesPage /></PageSuspense> },
+          { path: '/me', element: <ProfilePage /> },
+        ],
+      },
       { path: '/plans/new', element: <PageSuspense><CreatePlanPage /></PageSuspense> },
       { path: '/plans/:planId/applications', element: <PageSuspense><ApplicationsPage /></PageSuspense> },
       { path: '/plans/:planId', element: <PageSuspense><PlanDetailPage /></PageSuspense> },
-      { path: '/matches', element: <PageSuspense><MatchesPage /></PageSuspense> },
       { path: '/matches/:matchId', element: <PageSuspense><MatchDetailPage /></PageSuspense> },
       { path: '/matches/:matchId/safety', element: <PageSuspense><SafetyPage /></PageSuspense> },
-      { path: '/me', element: <ProfilePage /> },
       { path: '/me/edit', element: <EditProfilePage /> },
       { path: '/me/blocks', element: <BlockedUsersPage /> },
       { path: '/me/trusted-contacts', element: <PageSuspense><TrustedContactsPage /></PageSuspense> },
