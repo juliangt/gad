@@ -17,7 +17,6 @@ import type {
   PlanListItem,
   PlanOut,
   PlansQuery,
-  PlanUpdateIn,
 } from './types';
 
 /** Query params numéricos como espera el wrapper api/client ({ query }). */
@@ -100,16 +99,17 @@ export function useCreatePlan() {
   });
 }
 
-/** PATCH /plans/{id} — solo host. */
+/** PATCH /plans/{id} — solo host. Acepta el plan completo (PlanIn). */
 export function useUpdatePlan(planId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: PlanUpdateIn) =>
+    mutationFn: (input: Partial<PlanIn>) =>
       apiPatch<PlanOut>(`/plans/${planId}`, input),
     onSuccess: (plan) => {
       qc.setQueryData(['plans', planId], plan);
       qc.invalidateQueries({ queryKey: ['plans', planId] });
       qc.invalidateQueries({ queryKey: ['plans'] });
+      qc.invalidateQueries({ queryKey: ['me', 'plans'] });
       toast.success('Plan actualizado');
     },
     onError: () => toast.error('No se pudo actualizar el plan.'),
