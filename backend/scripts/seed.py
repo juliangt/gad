@@ -113,6 +113,7 @@ async def _set_preferences(
     age_min: int,
     age_max: int,
     radius: int = 2000,
+    validity: int = 120,
 ) -> None:
     prefs = user.preferences
     if prefs is None:
@@ -125,6 +126,7 @@ async def _set_preferences(
     prefs.age_range_min = age_min
     prefs.age_range_max = age_max
     prefs.default_search_radius_m = radius
+    prefs.default_plan_validity_mins = validity
     await session.commit()
 
 

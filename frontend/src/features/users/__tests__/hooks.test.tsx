@@ -18,7 +18,9 @@ const ME: UserDetail = {
   avatar_url: null, bio: null, birth_date: null, gender: 'undisclosed',
   reputation_score: 4.8, verification_level: 'email',
   preferences: {
-    default_search_radius_m: 2000, activity_types: ['coffee', 'drinks'],
+    default_search_radius_m: 2000,
+    default_plan_validity_mins: 120,
+    activity_types: ['coffee', 'drinks'],
     group_size_preference: 'either', age_range_min: 18, age_range_max: 99,
     gender_preference: 'any', notify_new_plans: true, notify_messages: true,
     notify_pending_alerts: true,

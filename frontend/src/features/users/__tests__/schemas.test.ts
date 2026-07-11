@@ -46,6 +46,7 @@ describe('userUpdateSchema', () => {
 describe('preferencesSchema', () => {
   const valid = {
     default_search_radius_m: 2000,
+    default_plan_validity_mins: 120,
     activity_types: ['coffee', 'walk'],
     group_size_preference: 'either',
     age_range_min: 18,
@@ -89,6 +90,14 @@ describe('preferencesSchema', () => {
 
   it('rechaza activity_type fuera del enum', () => {
     expect(preferencesSchema.safeParse({ ...valid, activity_types: ['skydiving'] }).success).toBe(false);
+  });
+
+  it('rechaza vigencia < 0', () => {
+    expect(preferencesSchema.safeParse({ ...valid, default_plan_validity_mins: -1 }).success).toBe(false);
+  });
+
+  it('rechaza vigencia > 1440', () => {
+    expect(preferencesSchema.safeParse({ ...valid, default_plan_validity_mins: 1500 }).success).toBe(false);
   });
 
   it('expone los 4 valores de gender', () => {

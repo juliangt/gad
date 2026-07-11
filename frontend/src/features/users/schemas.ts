@@ -30,6 +30,11 @@ export const preferencesSchema = z
       .int('Debe ser entero')
       .min(100, 'Mínimo 100 m')
       .max(50000, 'Máximo 50000 m'),
+    default_plan_validity_mins: z
+      .number({ message: 'Ingresá un número' })
+      .int('Debe ser entero')
+      .min(0, 'Mínimo 0 min')
+      .max(1440, 'Máximo 1440 min'),
     activity_types: z.array(activityTypeSchema),
     group_size_preference: groupSizeSchema,
     age_range_min: z.number().int().min(18, 'Mínimo 18').max(99, 'Máximo 99'),

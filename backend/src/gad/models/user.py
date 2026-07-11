@@ -69,6 +69,7 @@ class UserPreferences(Base, TimestampMixin):
         primary_key=True,
     )
     default_search_radius_m: Mapped[int] = mapped_column(Integer, nullable=False, default=2000)
+    default_plan_validity_mins: Mapped[int] = mapped_column(Integer, nullable=False, default=120)
     activity_types: Mapped[list[str]] = mapped_column(
         ARRAY(String), nullable=False, default=list
     )
