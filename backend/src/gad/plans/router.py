@@ -79,7 +79,9 @@ async def create_plan_endpoint(
 
 
 @router.get("", response_model=list[PlanListItem])
+@limiter.limit("60/minute")
 async def list_plans_endpoint(
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
     lat: float = Query(ge=-90, le=90),
