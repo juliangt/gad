@@ -36,6 +36,18 @@ class Settings(BaseSettings):
 
     # Rate limit
     rate_limit_enabled: bool = True
+    default_rate_limit: str = "300/minute"
+    forwarded_allow_ips: str = "*"
+
+    # Trusted hosts
+    trusted_hosts: list[str] | str = ["*"]
+
+    # Body / uploads
+    max_request_body_size: int = 10 * 1024 * 1024  # 10 MB
+    max_avatar_bytes: int = 5 * 1024 * 1024  # 5 MB
+
+    # WebSocket
+    ws_max_message_rate: int = 5  # mensajes por segundo por conexión
 
     # Security headers
     csp_policy: str = "default-src 'self'; frame-ancestors 'none'; base-uri 'none'"
@@ -45,6 +57,13 @@ class Settings(BaseSettings):
     def parse_cors_origins(cls, v):
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
+
+    @field_validator("trusted_hosts", mode="before")
+    @classmethod
+    def parse_trusted_hosts(cls, v):
+        if isinstance(v, str):
+            return [h.strip() for h in v.split(",") if h.strip()]
         return v
 
     @field_validator("jwt_secret")
