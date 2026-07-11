@@ -1,4 +1,6 @@
 # backend/src/gad/chat/websocket.py
+import time
+from collections import deque
 from typing import Annotated
 from uuid import UUID
 
@@ -10,12 +12,35 @@ from gad.auth.jwt import decode_token
 from gad.chat.manager import manager
 from gad.chat.schemas import MessageIn
 from gad.chat.service import send_message
+from gad.config import settings
 from gad.db import async_session_maker
 from gad.exceptions import InvalidTokenError
 from gad.models.match import MatchParticipant
 from gad.models.user import User
 
 router = APIRouter(tags=["chat"])
+
+
+class SlidingWindowRateLimiter:
+    """Límite de N mensajes por segundo usando una ventana deslizante in-memory.
+
+    Suficiente para throttle por conexión WS (slowapi no cubre websockets).
+    """
+
+    def __init__(self, max_per_second: int, window: float = 1.0):
+        self.max_per_second = max_per_second
+        self.window = window
+        self._events: deque[float] = deque()
+
+    def allow(self) -> bool:
+        now = time.monotonic()
+        cutoff = now - self.window
+        while self._events and self._events[0] <= cutoff:
+            self._events.popleft()
+        if len(self._events) >= self.max_per_second:
+            return False
+        self._events.append(now)
+        return True
 
 
 def _get_session_maker(app) -> async_sessionmaker[AsyncSession]:
@@ -70,9 +95,18 @@ async def chat_endpoint(
         return
 
     await mgr.connect(str(match_id), websocket)
+    throttle = SlidingWindowRateLimiter(
+        max_per_second=getattr(websocket.app.state, "ws_message_rate", None)
+        or settings.ws_max_message_rate
+    )
     try:
         while True:
             data = await websocket.receive_json()
+            if not throttle.allow():
+                await websocket.send_json(
+                    {"type": "error", "detail": "Demasiados mensajes, frená un poco"}
+                )
+                continue
             try:
                 msg_in = MessageIn(**data)
             except Exception:
