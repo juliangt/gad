@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, Circle, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { cn } from '../lib/utils';
 
@@ -41,6 +41,38 @@ function MapCenterUpdater({ center }: { center: [number, number] }) {
   return null;
 }
 
+// Captura clicks del mapa y los reenvía vía callback
+function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click: (e) => {
+      onMapClick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
+
+// Dibuja el círculo de radio de búsqueda y el pin del punto elegido
+function RadiusCircle({
+  center,
+  radiusM,
+  pickerMarker,
+}: {
+  center: [number, number];
+  radiusM: number;
+  pickerMarker?: [number, number] | null;
+}) {
+  return (
+    <>
+      <Circle
+        center={center}
+        radius={radiusM}
+        pathOptions={{ color: '#7c3aed', fillColor: '#7c3aed', fillOpacity: 0.08, weight: 1.5 }}
+      />
+      {pickerMarker && <Marker position={pickerMarker} icon={planIcon} />}
+    </>
+  );
+}
+
 interface PlanLocation {
   id: string;
   /** Latitud. En F3 se reemplaza por PlanListItem.location_lat. */
@@ -54,9 +86,23 @@ export interface MapBackgroundProps {
   plans: PlanLocation[];
   className?: string;
   onPlanClick?: (planId: string) => void;
+  /** Si está definido, el mapa captura clicks para elegir un punto. */
+  onMapClick?: (lat: number, lng: number) => void;
+  /** Si está definido, dibuja un círculo de radio de búsqueda. */
+  circle?: { center: [number, number]; radiusM: number } | null;
+  /** Pin del punto de referencia elegido (se dibuja junto al círculo). */
+  pickerMarker?: [number, number] | null;
 }
 
-export function MapBackground({ userLocation, plans, className, onPlanClick }: MapBackgroundProps) {
+export function MapBackground({
+  userLocation,
+  plans,
+  className,
+  onPlanClick,
+  onMapClick,
+  circle,
+  pickerMarker,
+}: MapBackgroundProps) {
   // Default to Buenos Aires if no location
   const center: [number, number] = userLocation || [-34.5900, -58.4300];
 
@@ -76,15 +122,19 @@ export function MapBackground({ userLocation, plans, className, onPlanClick }: M
         )}
         
         {plans.map((plan) => (
-          <Marker 
-            key={plan.id} 
-            position={[plan.lat, plan.lng]} 
-            icon={planIcon} 
+          <Marker
+            key={plan.id}
+            position={[plan.lat, plan.lng]}
+            icon={planIcon}
             eventHandlers={{
               click: () => onPlanClick?.(plan.id)
             }}
           />
         ))}
+        {onMapClick && <MapClickHandler onMapClick={onMapClick} />}
+        {circle && (
+          <RadiusCircle center={circle.center} radiusM={circle.radiusM} pickerMarker={pickerMarker} />
+        )}
       </MapContainer>
     </div>
   );
