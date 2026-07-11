@@ -6,8 +6,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from httpx import ASGITransport, AsyncClient
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from gad.admin.router import router as admin_router
 from gad.auth.router import router as auth_router
@@ -100,10 +100,10 @@ async def test_notifications_pagination_returns_cursor(client, db_session):
 
 @pytest.mark.asyncio
 async def test_reviews_pagination_returns_cursor(client, db_session):
-    from gad.models.plan import Plan
+    from gad.models.enums import ActivityType, MatchRole, MatchStatus, PlanMode
     from gad.models.match import Match, MatchParticipant
+    from gad.models.plan import Plan
     from gad.models.review import Review
-    from gad.models.enums import ActivityType, PlanMode, MatchStatus, MatchRole
 
     # Registrar usuarios
     reviewer = await register(
@@ -144,8 +144,18 @@ async def test_reviews_pagination_returns_cursor(client, db_session):
         await db_session.refresh(match)
 
         # Participantes
-        p1 = MatchParticipant(match_id=match.id, user_id=reviewer.user_id, role=MatchRole.participant, joined_at=now)
-        p2 = MatchParticipant(match_id=match.id, user_id=reviewee.user_id, role=MatchRole.host, joined_at=now)
+        p1 = MatchParticipant(
+            match_id=match.id,
+            user_id=reviewer.user_id,
+            role=MatchRole.participant,
+            joined_at=now,
+        )
+        p2 = MatchParticipant(
+            match_id=match.id,
+            user_id=reviewee.user_id,
+            role=MatchRole.host,
+            joined_at=now,
+        )
         db_session.add_all([p1, p2])
 
         # Crear reseña con created_at desfasados para orden de paginación
@@ -168,7 +178,8 @@ async def test_reviews_pagination_returns_cursor(client, db_session):
         assert len(body["items"]) == 2
         assert body["next_cursor"] is not None
 
-        resp2 = await c.get(f"/reviews?user_id={reviewee.user_id}&limit=2&before={quote(body['next_cursor'])}", headers=headers)
+        url = f"/reviews?user_id={reviewee.user_id}&limit=2" f"&before={quote(body['next_cursor'])}"
+        resp2 = await c.get(url, headers=headers)
         assert resp2.status_code == 200
         body2 = resp2.json()
         assert len(body2["items"]) == 1
@@ -176,9 +187,9 @@ async def test_reviews_pagination_returns_cursor(client, db_session):
 
 @pytest.mark.asyncio
 async def test_matches_pagination_returns_cursor(client, db_session):
-    from gad.models.plan import Plan
+    from gad.models.enums import ActivityType, MatchRole, MatchStatus, PlanMode
     from gad.models.match import Match, MatchParticipant
-    from gad.models.enums import ActivityType, PlanMode, MatchStatus, MatchRole
+    from gad.models.plan import Plan
 
     user = await register(
         db_session,
@@ -215,8 +226,18 @@ async def test_matches_pagination_returns_cursor(client, db_session):
         await db_session.commit()
         await db_session.refresh(match)
 
-        p1 = MatchParticipant(match_id=match.id, user_id=user.user_id, role=MatchRole.host, joined_at=now)
-        p2 = MatchParticipant(match_id=match.id, user_id=other.user_id, role=MatchRole.participant, joined_at=now)
+        p1 = MatchParticipant(
+            match_id=match.id,
+            user_id=user.user_id,
+            role=MatchRole.host,
+            joined_at=now,
+        )
+        p2 = MatchParticipant(
+            match_id=match.id,
+            user_id=other.user_id,
+            role=MatchRole.participant,
+            joined_at=now,
+        )
         db_session.add_all([p1, p2])
         await db_session.commit()
 
@@ -228,7 +249,8 @@ async def test_matches_pagination_returns_cursor(client, db_session):
         assert len(body["items"]) == 2
         assert body["next_cursor"] is not None
 
-        resp2 = await c.get(f"/matches?limit=2&before={quote(body['next_cursor'])}", headers=headers)
+        url = f"/matches?limit=2&before={quote(body['next_cursor'])}"
+        resp2 = await c.get(url, headers=headers)
         assert resp2.status_code == 200
         body2 = resp2.json()
         assert len(body2["items"]) == 1
@@ -236,8 +258,8 @@ async def test_matches_pagination_returns_cursor(client, db_session):
 
 @pytest.mark.asyncio
 async def test_me_applications_pagination_returns_cursor(client, db_session):
-    from gad.models.plan import Plan, PlanApplication
     from gad.models.enums import ActivityType, PlanMode
+    from gad.models.plan import Plan, PlanApplication
 
     applicant = await register(
         db_session,
@@ -281,7 +303,8 @@ async def test_me_applications_pagination_returns_cursor(client, db_session):
         assert len(body["items"]) == 2
         assert body["next_cursor"] is not None
 
-        resp2 = await c.get(f"/me/applications?limit=2&before={quote(body['next_cursor'])}", headers=headers)
+        url = f"/me/applications?limit=2&before={quote(body['next_cursor'])}"
+        resp2 = await c.get(url, headers=headers)
         assert resp2.status_code == 200
         body2 = resp2.json()
         assert len(body2["items"]) == 1
@@ -331,7 +354,8 @@ async def test_admin_reports_pagination_returns_cursor(client, db_session):
         assert len(body["items"]) == 2
         assert body["next_cursor"] is not None
 
-        resp2 = await c.get(f"/admin/reports?limit=2&before={quote(body['next_cursor'])}", headers=headers)
+        url = f"/admin/reports?limit=2&before={quote(body['next_cursor'])}"
+        resp2 = await c.get(url, headers=headers)
         assert resp2.status_code == 200
         body2 = resp2.json()
         assert len(body2["items"]) == 1
