@@ -94,3 +94,30 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # Auditoría de dependencias: busca vulns conocidas en el lockfile.
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          version: "0.11.26"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Sync deps
+        run: uv sync --all-packages
+
+      - name: Run pip-audit
+        run: uv run pip-audit --strict
