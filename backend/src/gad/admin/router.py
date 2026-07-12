@@ -261,6 +261,28 @@ async def update_user_endpoint(
     )
 
 
+@router.post("/users/{user_id}/reset-password")
+async def admin_reset_password_endpoint(
+    user_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, str]:
+    from gad.admin.service import admin_reset_password
+    from gad.admin.settings_service import record_audit
+    from gad.auth.dependencies import get_token_store
+
+    _, temporary = await admin_reset_password(session, get_token_store(), user_id)
+    await record_audit(
+        session,
+        actor_id=admin.id,
+        action="user.reset_password",
+        target_type="user",
+        target_id=str(user_id),
+        detail={},
+    )
+    return {"temporary_password": temporary}
+
+
 @router.post("/plans/{plan_id}/cancel")
 async def force_cancel_plan_endpoint(
     plan_id: UUID,

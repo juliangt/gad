@@ -1,10 +1,12 @@
 # backend/src/gad/admin/service.py
-from datetime import datetime
+import secrets
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gad.auth.passwords import hash_password
 from gad.exceptions import ConflictError, NotFoundError
 from gad.models.enums import UserStatus
 from gad.models.match import Match
@@ -121,6 +123,23 @@ async def update_user_admin(session: AsyncSession, user_id: UUID, data) -> User:
     await session.commit()
     await session.refresh(user)
     return user
+
+
+async def admin_reset_password(
+    session: AsyncSession, store, user_id: UUID
+) -> tuple[User, str]:
+    """Fuerza un reset generando una contraseña temporal fuerte.
+    Revoca todas las sesiones activas. Devuelve (user, temporary_password)."""
+    user = await _get_user_or_404(session, user_id)
+    # Generar contraseña temporal: 24 chars alfanuméricos (evita ambigüedades).
+    alphabet = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    temporary = "".join(secrets.choice(alphabet) for _ in range(24))
+    user.password_hash = hash_password(temporary)
+    user.password_changed_at = datetime.now(UTC)
+    await session.commit()
+    await session.refresh(user)
+    await store.revoke_user(str(user_id), ttl_seconds=7 * 86400)
+    return user, temporary
 
 
 async def list_users_admin(
