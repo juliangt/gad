@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Flag, Users, Star } from 'lucide-react';
+import { LayoutDashboard, Flag, Users, CalendarDays, Star } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
 const ITEMS = [
   { to: '/admin', label: 'Panel', icon: LayoutDashboard, end: true },
   { to: '/admin/reports', label: 'Reportes', icon: Flag, end: false },
   { to: '/admin/users', label: 'Usuarios', icon: Users, end: false },
+  { to: '/admin/plans', label: 'Planes', icon: CalendarDays, end: false },
   { to: '/admin/reviews', label: 'Reseñas', icon: Star, end: false },
 ];
 
