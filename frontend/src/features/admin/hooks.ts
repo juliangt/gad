@@ -21,6 +21,8 @@ import type {
   VenueAdminOut,
   VenueCreateInput,
   VenueOfferCreateInput,
+  AdminPlanListItem,
+  AdminPlanDetailOut,
 } from './types';
 
 export const adminKeys = {
@@ -35,6 +37,10 @@ export const adminKeys = {
   userReviews: (id: string) => ['admin', 'users', id, 'reviews'] as const,
   reviews: () => ['admin', 'reviews'] as const,
   venues: (status?: string) => ['admin', 'venues', { status }] as const,
+  plans: (status?: string, q?: string) => ['admin', 'plans', { status, q }] as const,
+  planDetail: (id: string) => ['admin', 'plans', id] as const,
+  planApplications: (id: string) => ['admin', 'plans', id, 'applications'] as const,
+  planMatches: (id: string) => ['admin', 'plans', id, 'matches'] as const,
 };
 
 const PAGE_SIZE = 50;
@@ -222,6 +228,90 @@ export function useAdminCancelPlan() {
       qc.invalidateQueries({ queryKey: adminKeys.stats() });
     },
     onError: () => toast.error('No se pudo cancelar el plan.'),
+  });
+}
+
+// ---------- Plans admin (SP2) ----------
+
+export function useAdminPlans(status?: string, q?: string) {
+  return useInfiniteQuery({
+    queryKey: adminKeys.plans(status, q),
+    queryFn: ({ pageParam }: { pageParam?: string }) =>
+      apiGet<PaginatedOut<AdminPlanListItem>>('/admin/plans', {
+        query: { status, q, limit: PAGE_SIZE, before: pageParam },
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminPlanDetail(planId: string) {
+  return useQuery({
+    queryKey: adminKeys.planDetail(planId),
+    queryFn: () => apiGet<AdminPlanDetailOut>(`/admin/plans/${planId}`),
+    enabled: Boolean(planId),
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminPlanApplications(planId: string) {
+  return useQuery({
+    queryKey: adminKeys.planApplications(planId),
+    queryFn: () => apiGet<unknown[]>(`/admin/plans/${planId}/applications`),
+    enabled: Boolean(planId),
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminPlanMatches(planId: string) {
+  return useQuery({
+    queryKey: adminKeys.planMatches(planId),
+    queryFn: () => apiGet<unknown[]>(`/admin/plans/${planId}/matches`),
+    enabled: Boolean(planId),
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminHidePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (planId: string) =>
+      apiPost<AdminPlanDetailOut>(`/admin/plans/${planId}/hide`),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'plans'] }),
+    ...userActionToast('Plan oculto.', 'No se pudo ocultar el plan.'),
+  });
+}
+
+export function useAdminUnhidePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (planId: string) =>
+      apiPost<AdminPlanDetailOut>(`/admin/plans/${planId}/unhide`),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'plans'] }),
+    ...userActionToast('Plan visible.', 'No se pudo mostrar el plan.'),
+  });
+}
+
+export function useAdminClosePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (planId: string) =>
+      apiPost<AdminPlanDetailOut>(`/admin/plans/${planId}/close`),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'plans'] });
+      qc.invalidateQueries({ queryKey: adminKeys.stats() });
+    },
+    ...userActionToast('Plan cerrado.', 'No se pudo cerrar el plan.'),
+  });
+}
+
+export function useAdminCancelMatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (matchId: string) => apiPost<OKMessage>(`/admin/matches/${matchId}/cancel`),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'plans'] }),
+    ...userActionToast('Match cancelado.', 'No se pudo cancelar el match.'),
   });
 }
 

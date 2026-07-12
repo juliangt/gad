@@ -154,3 +154,43 @@ export interface VenueOfferCreateInput {
   valid_from: string;
   valid_until: string;
 }
+
+/** `GET /admin/plans` — ítem del listado admin de planes. */
+export interface AdminPlanListItem {
+  id: string;
+  title: string;
+  activity_type: string;
+  status: string;
+  mode: string;
+  host_id: string;
+  host_name: string;
+  current_participants: number;
+  max_participants: number;
+  created_at: string;
+  expires_at: string;
+  hidden_by_host: boolean;
+}
+
+/** `GET /admin/plans/{id}` — detalle admin de un plan (host sin anonimizar + ubicación del grid). */
+export interface AdminPlanDetailOut {
+  id: string;
+  title: string;
+  activity_type: string;
+  status: string;
+  mode: string;
+  scheduled_at: string | null;
+  window_minutes: number;
+  max_participants: number;
+  current_participants: number;
+  description: string | null;
+  location_label: string;
+  location_lat: number;
+  location_lng: number;
+  search_radius_m: number;
+  expires_at: string;
+  created_at: string;
+  hidden_by_host: boolean;
+  host_id: string;
+  host_email: string;
+  host_name: string;
+}
