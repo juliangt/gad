@@ -21,7 +21,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.db import get_session
 from gad.exceptions import GADError
-from gad.settings_cache import SettingsService
 
 
 class FeatureDisabledError(GADError):
@@ -37,6 +36,10 @@ def require_feature(key: str):
     async def _checker(
         session: Annotated[AsyncSession, Depends(get_session)],
     ) -> None:
+        # Import diferido para evitar ciclo: settings_cache importa
+        # FAIL_CLOSED_FLAGS de este módulo en su cabecera.
+        from gad.settings_cache import SettingsService
+
         svc = SettingsService(session)
         if not await svc.is_feature_enabled(key):
             raise FeatureDisabledError(f"Funcionalidad '{key}' deshabilitada")
