@@ -16,6 +16,7 @@ from gad.chat.manager import manager
 from gad.chat.router import router as chat_rest_router
 from gad.chat.websocket import router as chat_router
 from gad.config import settings
+from gad.db import async_session_maker
 from gad.exceptions import GADError
 from gad.feature_flags import DEFAULT_FLAGS
 from gad.health import router as health_router
@@ -23,6 +24,7 @@ from gad.jobs.scheduler import shutdown_scheduler, start_scheduler
 from gad.logging_setup import setup_logging
 from gad.matching.router import router as matching_router
 from gad.middleware.body_size import BodySizeLimitMiddleware
+from gad.middleware.maintenance import MaintenanceMiddleware
 from gad.middleware.metrics import metrics_router
 from gad.middleware.request_logging import RequestLoggingMiddleware
 from gad.middleware.security_headers import SecurityHeadersMiddleware
@@ -153,7 +155,8 @@ def create_app() -> FastAPI:
 
     # Orden de add_middleware (Starlette prepend): la última línea es la
     # más externa. Queremos: TrustedHost > GZip > BodySize > CORS >
-    # SecurityHeaders > RequestLogging > app.
+    # SecurityHeaders > RequestLogging > Maintenance > app.
+    app.add_middleware(MaintenanceMiddleware, session_factory=async_session_maker)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
