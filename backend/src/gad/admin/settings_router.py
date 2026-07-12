@@ -20,7 +20,7 @@ from gad.admin.settings_schemas import (
 )
 from gad.admin.settings_service import get_settings_service, record_audit
 from gad.db import get_session
-from gad.exceptions import NotFoundError, ValidationError
+from gad.exceptions import NotFoundError
 from gad.models.settings import (
     AuditEvent,
     FeatureFlag,
@@ -30,7 +30,6 @@ from gad.models.settings import (
 )
 from gad.models.user import User
 from gad.schemas.pagination import PaginatedOut
-from gad.settings_cache import SettingsService
 
 router = APIRouter(prefix="/settings", tags=["admin-settings"])
 
