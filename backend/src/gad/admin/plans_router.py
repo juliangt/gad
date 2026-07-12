@@ -88,15 +88,15 @@ async def admin_list_plans_endpoint(
     activity: str | None = None,
     host_id: UUID | None = None,
     q: str | None = None,
-    date_from: datetime | None = Query(default=None),
-    date_to: datetime | None = Query(default=None),
+    from_: datetime | None = Query(default=None, alias="from"),
+    to_: datetime | None = Query(default=None, alias="to"),
     limit: int = Query(default=50, ge=1, le=100),
     before: datetime | None = Query(default=None),
 ) -> PaginatedOut[AdminPlanListItem]:
     plans = await list_admin_plans(
         session,
         status=status, activity=activity, host_id=host_id, q=q,
-        date_from=date_from, date_to=date_to, limit=limit, before=before,
+        date_from=from_, date_to=to_, limit=limit, before=before,
     )
     items = [_plan_to_list_item(p) for p in plans]
     next_cursor = items[-1].created_at.isoformat() if len(items) == limit and items else None

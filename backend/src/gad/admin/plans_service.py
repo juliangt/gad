@@ -10,6 +10,11 @@ from gad.models.enums import PlanStatus
 from gad.models.plan import Plan
 
 
+def _escape_like(s: str) -> str:
+    """Escapa los caracteres especiales de ILIKE (% _ \\)."""
+    return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 async def list_admin_plans(
     session: AsyncSession,
     *,
@@ -35,7 +40,7 @@ async def list_admin_plans(
     if host_id is not None:
         stmt = stmt.where(Plan.host_id == host_id)
     if q:
-        pattern = f"%{q}%"
+        pattern = f"%{_escape_like(q)}%"
         stmt = stmt.where(
             (Plan.title.ilike(pattern))
             | (Plan.description.ilike(pattern))

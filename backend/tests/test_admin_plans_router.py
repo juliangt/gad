@@ -125,3 +125,11 @@ async def test_admin_hide_plan(client, db_session):
         resp = await c.post(f"/admin/plans/{plan.id}/hide", headers=headers)
     assert resp.status_code == 200
     assert resp.json()["hidden_by_host"] is True
+
+
+@pytest.mark.asyncio
+async def test_admin_list_plans_requires_admin(client, db_session):
+    await _seed_plan(db_session)
+    async with client as c:
+        resp = await c.get("/admin/plans")
+    assert resp.status_code == 401
