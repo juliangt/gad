@@ -36,6 +36,7 @@ const DashboardPage = lazy(() => import('./features/admin/pages/DashboardPage'))
 const ReportsAdminPage = lazy(() => import('./features/admin/pages/ReportsAdminPage'));
 const UsersAdminPage = lazy(() => import('./features/admin/pages/UsersAdminPage'));
 const ReviewsAdminPage = lazy(() => import('./features/admin/pages/ReviewsAdminPage'));
+const UserDetailAdminPage = lazy(() => import('./features/admin/pages/UserDetailAdminPage'));
 
 export const router = createBrowserRouter([
   // Públicas (sin auth)
@@ -82,6 +83,7 @@ export const router = createBrowserRouter([
       { path: '/admin', element: <PageSuspense><DashboardPage /></PageSuspense> },
       { path: '/admin/reports', element: <PageSuspense><ReportsAdminPage /></PageSuspense> },
       { path: '/admin/users', element: <PageSuspense><UsersAdminPage /></PageSuspense> },
+      { path: '/admin/users/:id', element: <PageSuspense><UserDetailAdminPage /></PageSuspense> },
       { path: '/admin/reviews', element: <PageSuspense><ReviewsAdminPage /></PageSuspense> },
       { path: '/admin/*', element: <Navigate to="/admin" replace /> },
     ],
