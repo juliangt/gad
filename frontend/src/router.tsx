@@ -40,6 +40,7 @@ const UserDetailAdminPage = lazy(() => import('./features/admin/pages/UserDetail
 const PlansAdminPage = lazy(() => import('./features/admin/pages/PlansAdminPage'));
 const PlanDetailAdminPage = lazy(() => import('./features/admin/pages/PlanDetailAdminPage'));
 const SettingsAdminPage = lazy(() => import('./features/admin/pages/SettingsAdminPage'));
+const VenuesAdminPage = lazy(() => import('./features/admin/pages/VenuesAdminPage'));
 
 export const router = createBrowserRouter([
   // Públicas (sin auth)
@@ -91,6 +92,7 @@ export const router = createBrowserRouter([
       { path: '/admin/plans/:id', element: <PageSuspense><PlanDetailAdminPage /></PageSuspense> },
       { path: '/admin/reviews', element: <PageSuspense><ReviewsAdminPage /></PageSuspense> },
       { path: '/admin/settings', element: <PageSuspense><SettingsAdminPage /></PageSuspense> },
+      { path: '/admin/venues', element: <PageSuspense><VenuesAdminPage /></PageSuspense> },
       { path: '/admin/*', element: <Navigate to="/admin" replace /> },
     ],
   },
