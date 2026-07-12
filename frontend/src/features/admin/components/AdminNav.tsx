@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Flag, Users, CalendarDays, Star } from 'lucide-react';
+import { LayoutDashboard, Flag, Users, CalendarDays, Star, Settings } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
 const ITEMS = [
@@ -8,6 +8,7 @@ const ITEMS = [
   { to: '/admin/users', label: 'Usuarios', icon: Users, end: false },
   { to: '/admin/plans', label: 'Planes', icon: CalendarDays, end: false },
   { to: '/admin/reviews', label: 'Reseñas', icon: Star, end: false },
+  { to: '/admin/settings', label: 'Configuración', icon: Settings, end: false },
 ];
 
 export function AdminNav() {
