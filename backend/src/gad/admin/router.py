@@ -33,6 +33,7 @@ from gad.admin.settings_router import router as settings_router
 from gad.db import get_session
 from gad.models.user import User
 from gad.reports.schemas import ReportOut
+from gad.reviews.schemas import ReviewOut
 from gad.schemas.pagination import PaginatedOut
 from gad.users.service import set_user_status
 from gad.venues.admin_service import (
@@ -277,6 +278,129 @@ async def get_user_detail_endpoint(
         reports_received=data["reports_received"],
         avg_rating=data["avg_rating"],
     )
+
+
+@router.get("/users/{user_id}/plans", response_model=PaginatedOut[dict])
+async def admin_user_plans_endpoint(
+    user_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    limit: int = Query(default=50, ge=1, le=100),
+    before: datetime | None = Query(default=None),
+) -> PaginatedOut[dict]:
+    from sqlalchemy import select
+
+    from gad.models.plan import Plan
+
+    stmt = (
+        select(Plan)
+        .where(Plan.host_id == user_id)
+        .order_by(Plan.created_at.desc())
+        .limit(limit)
+    )
+    if before is not None:
+        stmt = stmt.where(Plan.created_at < before)
+    result = await session.execute(stmt)
+    plans = result.scalars().all()
+    items = [
+        {
+            "id": str(p.id),
+            "title": p.title,
+            "activity_type": p.activity_type.value,
+            "status": p.status.value,
+            "created_at": p.created_at.isoformat(),
+            "expires_at": p.expires_at.isoformat(),
+        }
+        for p in plans
+    ]
+    next_cursor = items[-1]["created_at"] if len(items) == limit and items else None
+    return PaginatedOut[dict](items=items, next_cursor=next_cursor)
+
+
+@router.get("/users/{user_id}/reports")
+async def admin_user_reports_endpoint(
+    user_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    from sqlalchemy import select
+
+    from gad.models.report import Report
+
+    filed = (
+        await session.execute(
+            select(Report)
+            .where(Report.reporter_id == user_id)
+            .order_by(Report.created_at.desc())
+        )
+    ).scalars().all()
+    received = (
+        await session.execute(
+            select(Report)
+            .where(Report.reported_id == user_id)
+            .order_by(Report.created_at.desc())
+        )
+    ).scalars().all()
+
+    def _to_out(r) -> ReportOut:
+        return ReportOut(
+            id=r.id,
+            reporter_id=r.reporter_id,
+            reported_id=r.reported_id,
+            reason=r.reason,
+            description=r.description,
+            status=r.status,
+            payload=r.payload,
+            created_at=r.created_at,
+        )
+
+    return {
+        "filed": [_to_out(r) for r in filed],
+        "received": [_to_out(r) for r in received],
+    }
+
+
+@router.get("/users/{user_id}/reviews")
+async def admin_user_reviews_endpoint(
+    user_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    from sqlalchemy import select
+
+    from gad.models.review import Review
+
+    given = (
+        await session.execute(
+            select(Review)
+            .where(Review.reviewer_id == user_id)
+            .order_by(Review.created_at.desc())
+        )
+    ).scalars().all()
+    received = (
+        await session.execute(
+            select(Review)
+            .where(Review.reviewee_id == user_id)
+            .order_by(Review.created_at.desc())
+        )
+    ).scalars().all()
+
+    def _to_out(r) -> ReviewOut:
+        return ReviewOut(
+            id=r.id,
+            match_id=r.match_id,
+            reviewer_id=r.reviewer_id,
+            reviewee_id=r.reviewee_id,
+            rating=r.rating,
+            comment=r.comment,
+            flag=r.flag,
+            created_at=r.created_at,
+        )
+
+    return {
+        "given": [_to_out(r) for r in given],
+        "received": [_to_out(r) for r in received],
+    }
 
 
 @router.post("/users/{user_id}/reset-password")
