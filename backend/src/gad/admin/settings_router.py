@@ -36,11 +36,8 @@ router = APIRouter(prefix="/settings", tags=["admin-settings"])
 
 def _snapshot(model) -> dict:
     """Snapshot de los campos editables para auditoría before/after."""
-    return {
-        c: getattr(model, c)
-        for c in model.__table__.columns.keys()
-        if c not in {"id", "created_at", "updated_at", "updated_by"}
-    }
+    skip = {"id", "created_at", "updated_at", "updated_by"}
+    return {c.name: getattr(model, c.name) for c in model.__table__.columns if c.name not in skip}
 
 
 @router.get("/user-defaults", response_model=UserDefaultsOut)

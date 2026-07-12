@@ -44,12 +44,18 @@ class MaintenanceMiddleware(BaseHTTPMiddleware):
 
         from gad.models.settings import MaintenanceState
 
-        async with self._session_factory() as session:
-            result = await session.execute(
-                select(MaintenanceState.enabled).where(MaintenanceState.id == 1)
-            )
-            enabled = result.scalar_one_or_none()
-        self._cached_enabled = bool(enabled) if enabled is not None else False
+        # Best-effort: si la DB no está disponible (ej. tests con engine global
+        # no conectado, o caída de DB), asumimos que NO hay mantenimiento para
+        # no bloquear la app por un fallo de infra. El flag se cachea igual.
+        try:
+            async with self._session_factory() as session:
+                result = await session.execute(
+                    select(MaintenanceState.enabled).where(MaintenanceState.id == 1)
+                )
+                enabled = result.scalar_one_or_none()
+            self._cached_enabled = bool(enabled) if enabled is not None else False
+        except OSError:
+            self._cached_enabled = False
         self._cached_at = now
         return self._cached_enabled
 
