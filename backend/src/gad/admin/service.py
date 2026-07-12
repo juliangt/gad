@@ -111,6 +111,18 @@ async def revoke_admin(
     return user
 
 
+async def update_user_admin(session: AsyncSession, user_id: UUID, data) -> User:
+    """Aplica los campos no-None de ``data`` al usuario. ``data`` es AdminUserUpdateIn."""
+    user = await _get_user_or_404(session, user_id)
+    for field in ("display_name", "email", "locale", "timezone", "verification_level"):
+        value = getattr(data, field)
+        if value is not None:
+            setattr(user, field, value)
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
 async def list_users_admin(
     session: AsyncSession,
     *,

@@ -9,7 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from gad.admin.dependencies import require_admin
 from gad.admin.schemas import (
     AdminStatsOut,
+    AdminUserDetailOut,
     AdminUserOut,
+    AdminUserUpdateIn,
     FlaggedReviewOut,
     ReportStatusUpdate,
     VenueAdminOut,
@@ -108,6 +110,39 @@ def _user_to_admin_out(user: User) -> AdminUserOut:
     )
 
 
+# Usado por update_user_endpoint y get_user_detail_endpoint (Task 6).
+def _user_to_detail_out(
+    user: User,
+    *,
+    plans_count: int = 0,
+    matches_count: int = 0,
+    reports_received: int = 0,
+    avg_rating: float = 0.0,
+) -> AdminUserDetailOut:
+    return AdminUserDetailOut(
+        id=user.id,
+        email=user.email,
+        display_name=user.display_name,
+        status=user.status,
+        is_admin=user.is_admin,
+        reputation_score=user.reputation_score,
+        created_at=user.created_at,
+        avatar_url=user.avatar_url,
+        bio=user.bio,
+        birth_date=user.birth_date,
+        gender=user.gender.value if user.gender else "undisclosed",
+        locale=user.locale,
+        timezone=user.timezone,
+        verification_level=user.verification_level,
+        last_active_at=user.last_active_at,
+        google_id=user.google_id,
+        plans_count=plans_count,
+        matches_count=matches_count,
+        reports_received=reports_received,
+        avg_rating=avg_rating,
+    )
+
+
 @router.get("/users", response_model=PaginatedOut[AdminUserOut])
 async def list_users_endpoint(
     admin: Annotated[User, Depends(require_admin)],
@@ -158,6 +193,72 @@ async def activate_user_endpoint(
 ) -> AdminUserOut:
     user = await set_user_status(session, user_id, "active")
     return _user_to_admin_out(user)
+
+
+@router.post("/users/{user_id}/grant-admin", response_model=AdminUserOut)
+async def grant_admin_endpoint(
+    user_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AdminUserOut:
+    from gad.admin.service import grant_admin
+    from gad.admin.settings_service import record_audit
+
+    user = await grant_admin(session, user_id)
+    await record_audit(
+        session,
+        actor_id=admin.id,
+        action="user.grant_admin",
+        target_type="user",
+        target_id=str(user_id),
+        detail={"is_admin": True},
+    )
+    return _user_to_admin_out(user)
+
+
+@router.post("/users/{user_id}/revoke-admin", response_model=AdminUserOut)
+async def revoke_admin_endpoint(
+    user_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AdminUserOut:
+    from gad.admin.service import revoke_admin
+    from gad.admin.settings_service import record_audit
+
+    user = await revoke_admin(session, user_id, actor_id=admin.id)
+    await record_audit(
+        session,
+        actor_id=admin.id,
+        action="user.revoke_admin",
+        target_type="user",
+        target_id=str(user_id),
+        detail={"is_admin": False},
+    )
+    return _user_to_admin_out(user)
+
+
+@router.patch("/users/{user_id}", response_model=AdminUserDetailOut)
+async def update_user_endpoint(
+    user_id: UUID,
+    data: AdminUserUpdateIn,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AdminUserDetailOut:
+    from gad.admin.service import update_user_admin
+    from gad.admin.settings_service import record_audit
+
+    user = await update_user_admin(session, user_id, data)
+    await record_audit(
+        session,
+        actor_id=admin.id,
+        action="user.update",
+        target_type="user",
+        target_id=str(user_id),
+        detail=data.model_dump(exclude_none=True),
+    )
+    return _user_to_detail_out(
+        user, plans_count=0, matches_count=0, reports_received=0, avg_rating=0.0
+    )
 
 
 @router.post("/plans/{plan_id}/cancel")
