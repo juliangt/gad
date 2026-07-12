@@ -14,6 +14,11 @@ from gad.models.user import User
 from gad.users.service import set_user_status
 
 
+def _escape_like(s: str) -> str:
+    """Escapa los metacaracteres de ILIKE (``%``, ``_`` y la propia barra)."""
+    return s.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
+
+
 async def get_stats(session: AsyncSession) -> dict[str, int]:
     total_users = (await session.execute(select(func.count(User.id)))).scalar_one()
     total_plans = (await session.execute(select(func.count(Plan.id)))).scalar_one()
@@ -71,6 +76,8 @@ async def list_users_admin(
     session: AsyncSession,
     *,
     status: str | None = None,
+    q: str | None = None,
+    is_admin: bool | None = None,
     limit: int = 50,
     before: datetime | None = None,
 ) -> list[User]:
@@ -79,6 +86,11 @@ async def list_users_admin(
         stmt = stmt.where(User.status == UserStatus(status))
     if before is not None:
         stmt = stmt.where(User.created_at < before)
+    if q:
+        pattern = f"%{_escape_like(q)}%"
+        stmt = stmt.where((User.email.ilike(pattern)) | (User.display_name.ilike(pattern)))
+    if is_admin is not None:
+        stmt = stmt.where(User.is_admin.is_(is_admin))
     result = await session.execute(stmt)
     return list(result.scalars().all())
 

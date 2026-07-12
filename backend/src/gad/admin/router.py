@@ -113,10 +113,14 @@ async def list_users_endpoint(
     admin: Annotated[User, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
     status: str | None = None,
+    q: str | None = None,
+    is_admin: bool | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=100),
     before: datetime | None = Query(default=None),
 ) -> PaginatedOut[AdminUserOut]:
-    users = await list_users_admin(session, status=status, limit=limit, before=before)
+    users = await list_users_admin(
+        session, status=status, q=q, is_admin=is_admin, limit=limit, before=before
+    )
     items = [_user_to_admin_out(u) for u in users]
     next_cursor = items[-1].created_at.isoformat() if len(items) == limit and items else None
     return PaginatedOut[AdminUserOut](items=items, next_cursor=next_cursor)
