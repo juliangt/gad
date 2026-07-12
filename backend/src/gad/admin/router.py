@@ -4,9 +4,11 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.admin.dependencies import require_admin
+from gad.admin.plans_router import router as plans_admin_router
 from gad.admin.schemas import (
     AdminStatsOut,
     AdminUserDetailOut,
@@ -288,8 +290,6 @@ async def admin_user_plans_endpoint(
     limit: int = Query(default=50, ge=1, le=100),
     before: datetime | None = Query(default=None),
 ) -> PaginatedOut[dict]:
-    from sqlalchemy import select
-
     from gad.models.plan import Plan
 
     stmt = (
@@ -323,8 +323,6 @@ async def admin_user_reports_endpoint(
     admin: Annotated[User, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> dict:
-    from sqlalchemy import select
-
     from gad.models.report import Report
 
     filed = (
@@ -366,8 +364,6 @@ async def admin_user_reviews_endpoint(
     admin: Annotated[User, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> dict:
-    from sqlalchemy import select
-
     from gad.models.review import Review
 
     given = (
@@ -433,6 +429,30 @@ async def force_cancel_plan_endpoint(
 ) -> dict[str, str]:
     await force_cancel_plan(session, plan_id)
     return {"message": "Plan cancelado por moderación"}
+
+
+@router.post("/matches/{match_id}/cancel")
+async def admin_cancel_match_endpoint(
+    match_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, str]:
+    from gad.admin.settings_service import record_audit
+    from gad.exceptions import NotFoundError
+    from gad.models.enums import MatchStatus
+    from gad.models.match import Match
+
+    result = await session.execute(select(Match).where(Match.id == match_id))
+    match = result.scalar_one_or_none()
+    if match is None:
+        raise NotFoundError("Match no encontrado")
+    match.status = MatchStatus.cancelled
+    await session.commit()
+    await record_audit(
+        session, actor_id=admin.id, action="match.cancel",
+        target_type="match", target_id=str(match_id), detail={},
+    )
+    return {"message": "Match cancelado por moderación"}
 
 
 def _review_to_flagged_out(r) -> FlaggedReviewOut:
@@ -632,3 +652,6 @@ async def delete_offer_endpoint(
 
 # Settings sub-router: rutas bajo /admin/settings/*
 router.include_router(settings_router)
+
+# Plans sub-router: rutas bajo /admin/plans/*
+router.include_router(plans_admin_router)
