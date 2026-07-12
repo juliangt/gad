@@ -1,17 +1,25 @@
 # backend/src/gad/admin/service.py
-from datetime import datetime
+import secrets
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gad.exceptions import NotFoundError
+from gad.auth.passwords import hash_password
+from gad.exceptions import ConflictError, NotFoundError
 from gad.models.enums import UserStatus
-from gad.models.match import Match
+from gad.models.match import Match, MatchParticipant
 from gad.models.plan import Plan
 from gad.models.report import Report
+from gad.models.review import Review
 from gad.models.user import User
 from gad.users.service import set_user_status
+
+
+def _escape_like(s: str) -> str:
+    """Escapa los metacaracteres de ILIKE (``%``, ``_`` y la propia barra)."""
+    return s.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
 
 
 async def get_stats(session: AsyncSession) -> dict[str, int]:
@@ -67,10 +75,113 @@ async def ban_user(session: AsyncSession, store, user_id: UUID) -> User:
     return user
 
 
+async def _get_user_or_404(session: AsyncSession, user_id: UUID) -> User:
+    result = await session.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise NotFoundError("Usuario no encontrado")
+    return user
+
+
+async def grant_admin(session: AsyncSession, user_id: UUID) -> User:
+    user = await _get_user_or_404(session, user_id)
+    user.is_admin = True
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
+async def revoke_admin(
+    session: AsyncSession, user_id: UUID, *, actor_id: UUID
+) -> User:
+    # Protección: un admin no puede quitarse el rol a sí mismo.
+    if user_id == actor_id:
+        raise ConflictError("No podés quitarte el rol de administrador a vos mismo")
+    user = await _get_user_or_404(session, user_id)
+    # Protección: no dejar el sistema sin admins activos.
+    active_admins = (
+        await session.execute(
+            select(func.count(User.id)).where(
+                User.is_admin.is_(True), User.status == UserStatus.active
+            )
+        )
+    ).scalar_one()
+    if active_admins <= 1:
+        raise ConflictError("No se puede revocar el último administrador activo")
+    user.is_admin = False
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
+async def update_user_admin(session: AsyncSession, user_id: UUID, data) -> User:
+    """Aplica los campos no-None de ``data`` al usuario. ``data`` es AdminUserUpdateIn."""
+    user = await _get_user_or_404(session, user_id)
+    for field in ("display_name", "email", "locale", "timezone", "verification_level"):
+        value = getattr(data, field)
+        if value is not None:
+            setattr(user, field, value)
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
+async def get_user_detail_admin(session: AsyncSession, user_id: UUID) -> dict:
+    """Devuelve el usuario + agregados para la vista 360°."""
+    user = await _get_user_or_404(session, user_id)
+    plans_count = (
+        await session.execute(select(func.count(Plan.id)).where(Plan.host_id == user_id))
+    ).scalar_one()
+    matches_count = (
+        await session.execute(
+            select(func.count(MatchParticipant.user_id)).where(
+                MatchParticipant.user_id == user_id
+            )
+        )
+    ).scalar_one()
+    reports_received = (
+        await session.execute(
+            select(func.count(Report.id)).where(Report.reported_id == user_id)
+        )
+    ).scalar_one()
+    avg_rating_result = (
+        await session.execute(
+            select(func.avg(Review.rating)).where(Review.reviewee_id == user_id)
+        )
+    ).scalar_one()
+    avg_rating = float(avg_rating_result) if avg_rating_result is not None else 0.0
+    return {
+        "user": user,
+        "plans_count": plans_count,
+        "matches_count": matches_count,
+        "reports_received": reports_received,
+        "avg_rating": round(avg_rating, 2),
+    }
+
+
+async def admin_reset_password(
+    session: AsyncSession, store, user_id: UUID
+) -> tuple[User, str]:
+    """Fuerza un reset generando una contraseña temporal fuerte.
+    Revoca todas las sesiones activas. Devuelve (user, temporary_password)."""
+    user = await _get_user_or_404(session, user_id)
+    # Generar contraseña temporal: 24 chars alfanuméricos (evita ambigüedades).
+    alphabet = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    temporary = "".join(secrets.choice(alphabet) for _ in range(24))
+    user.password_hash = hash_password(temporary)
+    user.password_changed_at = datetime.now(UTC)
+    await session.commit()
+    await session.refresh(user)
+    await store.revoke_user(str(user_id), ttl_seconds=7 * 86400)
+    return user, temporary
+
+
 async def list_users_admin(
     session: AsyncSession,
     *,
     status: str | None = None,
+    q: str | None = None,
+    is_admin: bool | None = None,
     limit: int = 50,
     before: datetime | None = None,
 ) -> list[User]:
@@ -79,6 +190,11 @@ async def list_users_admin(
         stmt = stmt.where(User.status == UserStatus(status))
     if before is not None:
         stmt = stmt.where(User.created_at < before)
+    if q:
+        pattern = f"%{_escape_like(q)}%"
+        stmt = stmt.where((User.email.ilike(pattern)) | (User.display_name.ilike(pattern)))
+    if is_admin is not None:
+        stmt = stmt.where(User.is_admin.is_(is_admin))
     result = await session.execute(stmt)
     return list(result.scalars().all())
 

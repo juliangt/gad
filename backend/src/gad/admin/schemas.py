@@ -1,10 +1,18 @@
 # backend/src/gad/admin/schemas.py
+from datetime import date as date_type
 from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel
 
-from gad.models.enums import ActivityType, OfferRedemption, ReviewFlag, UserStatus, VenueStatus
+from gad.models.enums import (
+    ActivityType,
+    OfferRedemption,
+    ReviewFlag,
+    UserStatus,
+    VenueStatus,
+    VerificationLevel,
+)
 
 
 class AdminStatsOut(BaseModel):
@@ -26,6 +34,30 @@ class AdminUserOut(BaseModel):
     is_admin: bool
     reputation_score: float
     created_at: datetime
+
+
+class AdminUserUpdateIn(BaseModel):
+    display_name: str | None = None
+    email: str | None = None
+    locale: str | None = None
+    timezone: str | None = None
+    verification_level: VerificationLevel | None = None
+
+
+class AdminUserDetailOut(AdminUserOut):
+    avatar_url: str | None = None
+    bio: str | None = None
+    birth_date: date_type | None = None
+    gender: str
+    locale: str
+    timezone: str
+    verification_level: VerificationLevel
+    last_active_at: datetime | None = None
+    google_id: str | None = None
+    plans_count: int = 0
+    matches_count: int = 0
+    reports_received: int = 0
+    avg_rating: float = 0.0
 
 
 class UserStatusUpdate(BaseModel):

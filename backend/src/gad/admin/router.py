@@ -4,12 +4,16 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.admin.dependencies import require_admin
+from gad.admin.plans_router import router as plans_admin_router
 from gad.admin.schemas import (
     AdminStatsOut,
+    AdminUserDetailOut,
     AdminUserOut,
+    AdminUserUpdateIn,
     FlaggedReviewOut,
     ReportStatusUpdate,
     VenueAdminOut,
@@ -27,9 +31,11 @@ from gad.admin.service import (
     list_users_admin,
     update_report_status_admin,
 )
+from gad.admin.settings_router import router as settings_router
 from gad.db import get_session
 from gad.models.user import User
 from gad.reports.schemas import ReportOut
+from gad.reviews.schemas import ReviewOut
 from gad.schemas.pagination import PaginatedOut
 from gad.users.service import set_user_status
 from gad.venues.admin_service import (
@@ -107,15 +113,52 @@ def _user_to_admin_out(user: User) -> AdminUserOut:
     )
 
 
+# Usado por update_user_endpoint y get_user_detail_endpoint (Task 6).
+def _user_to_detail_out(
+    user: User,
+    *,
+    plans_count: int = 0,
+    matches_count: int = 0,
+    reports_received: int = 0,
+    avg_rating: float = 0.0,
+) -> AdminUserDetailOut:
+    return AdminUserDetailOut(
+        id=user.id,
+        email=user.email,
+        display_name=user.display_name,
+        status=user.status,
+        is_admin=user.is_admin,
+        reputation_score=user.reputation_score,
+        created_at=user.created_at,
+        avatar_url=user.avatar_url,
+        bio=user.bio,
+        birth_date=user.birth_date,
+        gender=user.gender.value if user.gender else "undisclosed",
+        locale=user.locale,
+        timezone=user.timezone,
+        verification_level=user.verification_level,
+        last_active_at=user.last_active_at,
+        google_id=user.google_id,
+        plans_count=plans_count,
+        matches_count=matches_count,
+        reports_received=reports_received,
+        avg_rating=avg_rating,
+    )
+
+
 @router.get("/users", response_model=PaginatedOut[AdminUserOut])
 async def list_users_endpoint(
     admin: Annotated[User, Depends(require_admin)],
     session: Annotated[AsyncSession, Depends(get_session)],
     status: str | None = None,
+    q: str | None = None,
+    is_admin: bool | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=100),
     before: datetime | None = Query(default=None),
 ) -> PaginatedOut[AdminUserOut]:
-    users = await list_users_admin(session, status=status, limit=limit, before=before)
+    users = await list_users_admin(
+        session, status=status, q=q, is_admin=is_admin, limit=limit, before=before
+    )
     items = [_user_to_admin_out(u) for u in users]
     next_cursor = items[-1].created_at.isoformat() if len(items) == limit and items else None
     return PaginatedOut[AdminUserOut](items=items, next_cursor=next_cursor)
@@ -155,6 +198,229 @@ async def activate_user_endpoint(
     return _user_to_admin_out(user)
 
 
+@router.post("/users/{user_id}/grant-admin", response_model=AdminUserOut)
+async def grant_admin_endpoint(
+    user_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AdminUserOut:
+    from gad.admin.service import grant_admin
+    from gad.admin.settings_service import record_audit
+
+    user = await grant_admin(session, user_id)
+    await record_audit(
+        session,
+        actor_id=admin.id,
+        action="user.grant_admin",
+        target_type="user",
+        target_id=str(user_id),
+        detail={"is_admin": True},
+    )
+    return _user_to_admin_out(user)
+
+
+@router.post("/users/{user_id}/revoke-admin", response_model=AdminUserOut)
+async def revoke_admin_endpoint(
+    user_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AdminUserOut:
+    from gad.admin.service import revoke_admin
+    from gad.admin.settings_service import record_audit
+
+    user = await revoke_admin(session, user_id, actor_id=admin.id)
+    await record_audit(
+        session,
+        actor_id=admin.id,
+        action="user.revoke_admin",
+        target_type="user",
+        target_id=str(user_id),
+        detail={"is_admin": False},
+    )
+    return _user_to_admin_out(user)
+
+
+@router.patch("/users/{user_id}", response_model=AdminUserDetailOut)
+async def update_user_endpoint(
+    user_id: UUID,
+    data: AdminUserUpdateIn,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AdminUserDetailOut:
+    from gad.admin.service import update_user_admin
+    from gad.admin.settings_service import record_audit
+
+    user = await update_user_admin(session, user_id, data)
+    await record_audit(
+        session,
+        actor_id=admin.id,
+        action="user.update",
+        target_type="user",
+        target_id=str(user_id),
+        detail=data.model_dump(exclude_none=True),
+    )
+    return _user_to_detail_out(
+        user, plans_count=0, matches_count=0, reports_received=0, avg_rating=0.0
+    )
+
+
+@router.get("/users/{user_id}", response_model=AdminUserDetailOut)
+async def get_user_detail_endpoint(
+    user_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AdminUserDetailOut:
+    from gad.admin.service import get_user_detail_admin
+
+    data = await get_user_detail_admin(session, user_id)
+    return _user_to_detail_out(
+        data["user"],
+        plans_count=data["plans_count"],
+        matches_count=data["matches_count"],
+        reports_received=data["reports_received"],
+        avg_rating=data["avg_rating"],
+    )
+
+
+@router.get("/users/{user_id}/plans", response_model=PaginatedOut[dict])
+async def admin_user_plans_endpoint(
+    user_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    limit: int = Query(default=50, ge=1, le=100),
+    before: datetime | None = Query(default=None),
+) -> PaginatedOut[dict]:
+    from gad.models.plan import Plan
+
+    stmt = (
+        select(Plan)
+        .where(Plan.host_id == user_id)
+        .order_by(Plan.created_at.desc())
+        .limit(limit)
+    )
+    if before is not None:
+        stmt = stmt.where(Plan.created_at < before)
+    result = await session.execute(stmt)
+    plans = result.scalars().all()
+    items = [
+        {
+            "id": str(p.id),
+            "title": p.title,
+            "activity_type": p.activity_type.value,
+            "status": p.status.value,
+            "created_at": p.created_at.isoformat(),
+            "expires_at": p.expires_at.isoformat(),
+        }
+        for p in plans
+    ]
+    next_cursor = items[-1]["created_at"] if len(items) == limit and items else None
+    return PaginatedOut[dict](items=items, next_cursor=next_cursor)
+
+
+@router.get("/users/{user_id}/reports")
+async def admin_user_reports_endpoint(
+    user_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    from gad.models.report import Report
+
+    filed = (
+        await session.execute(
+            select(Report)
+            .where(Report.reporter_id == user_id)
+            .order_by(Report.created_at.desc())
+        )
+    ).scalars().all()
+    received = (
+        await session.execute(
+            select(Report)
+            .where(Report.reported_id == user_id)
+            .order_by(Report.created_at.desc())
+        )
+    ).scalars().all()
+
+    def _to_out(r) -> ReportOut:
+        return ReportOut(
+            id=r.id,
+            reporter_id=r.reporter_id,
+            reported_id=r.reported_id,
+            reason=r.reason,
+            description=r.description,
+            status=r.status,
+            payload=r.payload,
+            created_at=r.created_at,
+        )
+
+    return {
+        "filed": [_to_out(r) for r in filed],
+        "received": [_to_out(r) for r in received],
+    }
+
+
+@router.get("/users/{user_id}/reviews")
+async def admin_user_reviews_endpoint(
+    user_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    from gad.models.review import Review
+
+    given = (
+        await session.execute(
+            select(Review)
+            .where(Review.reviewer_id == user_id)
+            .order_by(Review.created_at.desc())
+        )
+    ).scalars().all()
+    received = (
+        await session.execute(
+            select(Review)
+            .where(Review.reviewee_id == user_id)
+            .order_by(Review.created_at.desc())
+        )
+    ).scalars().all()
+
+    def _to_out(r) -> ReviewOut:
+        return ReviewOut(
+            id=r.id,
+            match_id=r.match_id,
+            reviewer_id=r.reviewer_id,
+            reviewee_id=r.reviewee_id,
+            rating=r.rating,
+            comment=r.comment,
+            flag=r.flag,
+            created_at=r.created_at,
+        )
+
+    return {
+        "given": [_to_out(r) for r in given],
+        "received": [_to_out(r) for r in received],
+    }
+
+
+@router.post("/users/{user_id}/reset-password")
+async def admin_reset_password_endpoint(
+    user_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, str]:
+    from gad.admin.service import admin_reset_password
+    from gad.admin.settings_service import record_audit
+    from gad.auth.dependencies import get_token_store
+
+    _, temporary = await admin_reset_password(session, get_token_store(), user_id)
+    await record_audit(
+        session,
+        actor_id=admin.id,
+        action="user.reset_password",
+        target_type="user",
+        target_id=str(user_id),
+        detail={},
+    )
+    return {"temporary_password": temporary}
+
+
 @router.post("/plans/{plan_id}/cancel")
 async def force_cancel_plan_endpoint(
     plan_id: UUID,
@@ -163,6 +429,30 @@ async def force_cancel_plan_endpoint(
 ) -> dict[str, str]:
     await force_cancel_plan(session, plan_id)
     return {"message": "Plan cancelado por moderación"}
+
+
+@router.post("/matches/{match_id}/cancel")
+async def admin_cancel_match_endpoint(
+    match_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict[str, str]:
+    from gad.admin.settings_service import record_audit
+    from gad.exceptions import NotFoundError
+    from gad.models.enums import MatchStatus
+    from gad.models.match import Match
+
+    result = await session.execute(select(Match).where(Match.id == match_id))
+    match = result.scalar_one_or_none()
+    if match is None:
+        raise NotFoundError("Match no encontrado")
+    match.status = MatchStatus.cancelled
+    await session.commit()
+    await record_audit(
+        session, actor_id=admin.id, action="match.cancel",
+        target_type="match", target_id=str(match_id), detail={},
+    )
+    return {"message": "Match cancelado por moderación"}
 
 
 def _review_to_flagged_out(r) -> FlaggedReviewOut:
@@ -358,3 +648,10 @@ async def delete_offer_endpoint(
 ) -> dict[str, str]:
     await delete_offer(session, venue_id, offer_id)
     return {"message": "Oferta eliminada"}
+
+
+# Settings sub-router: rutas bajo /admin/settings/*
+router.include_router(settings_router)
+
+# Plans sub-router: rutas bajo /admin/plans/*
+router.include_router(plans_admin_router)

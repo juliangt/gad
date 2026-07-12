@@ -1,11 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AdminNav } from '../components/AdminNav';
 import { AdminUserRow } from '../components/AdminUserRow';
+import { ResetPasswordModal } from '../components/ResetPasswordModal';
 import { Spinner } from '../../../components/ui/Spinner';
 import { Button } from '../../../components/ui/Button';
+import { Input } from '../../../components/ui/Input';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { ErrorState } from '../../../components/ui/ErrorState';
-import { useAdminUsers, useBanUser, useSuspendUser, useActivateUser } from '../hooks';
+import {
+  useAdminUsers,
+  useBanUser,
+  useSuspendUser,
+  useActivateUser,
+  useGrantAdmin,
+  useRevokeAdmin,
+  useResetUserPassword,
+} from '../hooks';
 
 const FILTERS: Array<{ value: string | undefined; label: string }> = [
   { value: undefined, label: 'Todos' },
@@ -16,11 +26,31 @@ const FILTERS: Array<{ value: string | undefined; label: string }> = [
 
 export default function UsersAdminPage() {
   const [status, setStatus] = useState<string | undefined>(undefined);
-  const query = useAdminUsers(status);
+  const [q, setQ] = useState('');
+  const [debouncedQ, setDebouncedQ] = useState('');
+  const [isAdminFilter, setIsAdminFilter] = useState<boolean | undefined>(undefined);
+
+  // debounce de búsqueda
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const query = useAdminUsers(status, debouncedQ || undefined, isAdminFilter);
   const ban = useBanUser();
   const suspend = useSuspendUser();
   const activate = useActivateUser();
-  const busy = ban.isPending || suspend.isPending || activate.isPending;
+  const grantAdmin = useGrantAdmin();
+  const revokeAdmin = useRevokeAdmin();
+  const resetPw = useResetUserPassword();
+  const [resetTarget, setResetTarget] = useState<string | null>(null);
+  const busy =
+    ban.isPending ||
+    suspend.isPending ||
+    activate.isPending ||
+    grantAdmin.isPending ||
+    revokeAdmin.isPending ||
+    resetPw.isPending;
 
   const users = query.data?.pages.flatMap((p) => p.items) ?? [];
 
@@ -36,18 +66,38 @@ export default function UsersAdminPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-4 space-y-3">
-        <div role="tablist" aria-label="Filtrar por estado" className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit">
-          {FILTERS.map((f) => (
+        <Input placeholder="Buscar por email o nombre…" value={q} onChange={(e) => setQ(e.target.value)} />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div role="tablist" aria-label="Filtrar por estado" className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit">
+            {FILTERS.map((f) => (
+              <button
+                key={f.label}
+                role="tab"
+                aria-selected={status === f.value}
+                onClick={() => setStatus(f.value)}
+                className={`px-3 py-1.5 text-sm rounded-md ${status === f.value ? 'bg-white shadow text-gray-900 font-medium' : 'text-gray-600'}`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div role="group" aria-label="Filtrar por rol" className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit">
             <button
-              key={f.label}
-              role="tab"
-              aria-selected={status === f.value}
-              onClick={() => setStatus(f.value)}
-              className={`px-3 py-1.5 text-sm rounded-md ${status === f.value ? 'bg-white shadow text-gray-900 font-medium' : 'text-gray-600'}`}
+              aria-pressed={isAdminFilter === undefined}
+              onClick={() => setIsAdminFilter(undefined)}
+              className={`px-3 py-1.5 text-sm rounded-md ${isAdminFilter === undefined ? 'bg-white shadow text-gray-900 font-medium' : 'text-gray-600'}`}
             >
-              {f.label}
+              Todos
             </button>
-          ))}
+            <button
+              aria-pressed={isAdminFilter === true}
+              onClick={() => setIsAdminFilter(true)}
+              className={`px-3 py-1.5 text-sm rounded-md ${isAdminFilter === true ? 'bg-white shadow text-gray-900 font-medium' : 'text-gray-600'}`}
+            >
+              Admins
+            </button>
+          </div>
         </div>
 
         {query.isLoading && <div className="flex justify-center py-12"><Spinner size="lg" /></div>}
@@ -64,6 +114,12 @@ export default function UsersAdminPage() {
               onBan={(id) => ban.mutate(id)}
               onSuspend={(id) => suspend.mutate(id)}
               onActivate={(id) => activate.mutate(id)}
+              onGrantAdmin={(id) => grantAdmin.mutate(id)}
+              onRevokeAdmin={(id) => revokeAdmin.mutate(id)}
+              onResetPassword={(id) => {
+                setResetTarget(id);
+                resetPw.mutate(id);
+              }}
               busy={busy}
             />
           ))}
@@ -77,6 +133,13 @@ export default function UsersAdminPage() {
           </div>
         )}
       </main>
+
+      <ResetPasswordModal
+        open={resetTarget !== null}
+        onClose={() => setResetTarget(null)}
+        temporaryPassword={resetPw.data?.temporary_password ?? null}
+        loading={resetPw.isPending}
+      />
     </div>
   );
 }

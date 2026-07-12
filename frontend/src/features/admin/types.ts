@@ -35,6 +35,60 @@ export interface AdminUserOut {
   created_at: string;
 }
 
+/** `GET /admin/users/{id}` — detalle extendido de un usuario. */
+export interface AdminUserDetailOut extends AdminUserOut {
+  avatar_url: string | null;
+  bio: string | null;
+  birth_date: string | null;
+  gender: string;
+  locale: string;
+  timezone: string;
+  verification_level: string;
+  last_active_at: string | null;
+  google_id: string | null;
+  plans_count: number;
+  matches_count: number;
+  reports_received: number;
+  avg_rating: number;
+}
+
+/** Body de `PATCH /admin/users/{id}`. */
+export interface AdminUserUpdateInput {
+  display_name?: string;
+  email?: string;
+  locale?: string;
+  timezone?: string;
+  verification_level?: string;
+}
+
+/** `GET /admin/users/{id}/plans` — página de planes del usuario. */
+export interface AdminUserPlansPage {
+  items: AdminUserPlanItem[];
+  next_cursor: string | null;
+}
+
+/** Item de `AdminUserPlansPage`. */
+export interface AdminUserPlanItem {
+  id: string;
+  title: string;
+  activity_type: string;
+  status: string;
+  created_at: string;
+  expires_at: string;
+}
+
+/** `GET /admin/users/{id}/reports` — reportes emitidos y recibidos. */
+export interface AdminUserReports {
+  filed: ReportOut[];
+  received: ReportOut[];
+}
+
+/** `GET /admin/users/{id}/reviews` — reseñas emitidas y recibidas. */
+export interface AdminUserReviews {
+  given: AdminReviewOut[];
+  received: AdminReviewOut[];
+}
+
 /** Body de `PATCH /admin/reports/{id}`. */
 export interface ReportStatusUpdate {
   status: string;
@@ -99,4 +153,115 @@ export interface VenueOfferCreateInput {
   redemption_method: string;
   valid_from: string;
   valid_until: string;
+}
+
+/** Body de PATCH /admin/venues/{id} (todos opcionales) */
+export interface VenueUpdateInput {
+  name?: string;
+  category?: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+  owner_name?: string;
+  owner_email?: string;
+  owner_phone?: string | null;
+}
+
+/** Body de PATCH /admin/venues/{id}/offers/{offerId} (todos opcionales) */
+export interface VenueOfferUpdateInput {
+  title?: string;
+  description?: string;
+  redemption_method?: string;
+  valid_from?: string;
+  valid_until?: string;
+  active?: boolean;
+}
+
+/** `GET /admin/plans` — ítem del listado admin de planes. */
+export interface AdminPlanListItem {
+  id: string;
+  title: string;
+  activity_type: string;
+  status: string;
+  mode: string;
+  host_id: string;
+  host_name: string;
+  current_participants: number;
+  max_participants: number;
+  created_at: string;
+  expires_at: string;
+  hidden_by_host: boolean;
+}
+
+/** `GET /admin/plans/{id}` — detalle admin de un plan (host sin anonimizar + ubicación del grid). */
+export interface AdminPlanDetailOut {
+  id: string;
+  title: string;
+  activity_type: string;
+  status: string;
+  mode: string;
+  scheduled_at: string | null;
+  window_minutes: number;
+  max_participants: number;
+  current_participants: number;
+  description: string | null;
+  location_label: string;
+  location_lat: number;
+  location_lng: number;
+  search_radius_m: number;
+  expires_at: string;
+  created_at: string;
+  hidden_by_host: boolean;
+  host_id: string;
+  host_email: string;
+  host_name: string;
+}
+
+/** GET /admin/settings/user-defaults */
+export interface UserDefaultsOut {
+  default_plan_validity_mins: number;
+  default_search_radius_m: number;
+  age_range_min: number;
+  age_range_max: number;
+  group_size_preference: string;
+  gender_preference: string;
+  activity_types: string[];
+}
+
+/** GET /admin/settings/operational */
+export interface OperationalSettingsOut {
+  rate_limit_enabled: boolean;
+  default_rate_limit: string;
+  access_token_expire_minutes: number;
+  refresh_token_expire_days: number;
+  max_avatar_bytes: number;
+  ws_max_message_rate: number;
+}
+
+/** GET /admin/settings/feature-flags */
+export interface FeatureFlagOut {
+  key: string;
+  enabled: boolean;
+  description: string | null;
+}
+
+/** GET /admin/settings/maintenance */
+export interface MaintenanceOut {
+  enabled: boolean;
+  message: string;
+  banner_active: boolean;
+  banner_message: string;
+  banner_level: 'info' | 'warning';
+  updated_by: string | null;
+}
+
+/** GET /admin/settings/audit */
+export interface AuditEventOut {
+  id: string;
+  actor_id: string | null;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  detail: Record<string, unknown>;
+  created_at: string;
 }
