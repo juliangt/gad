@@ -27,6 +27,13 @@ from gad.models.safety import SafetyEvent, SafetySession, TrustedContact
 from gad.models.social import Block, Notification, PushSubscription
 from gad.models.user import User, UserPreferences
 from gad.models.venue import Venue, VenueOffer
+from gad.models.settings import (
+    AuditEvent,
+    FeatureFlag,
+    MaintenanceState,
+    OperationalSettings,
+    UserDefaults,
+)
 
 __all__ = [
     "Base",
@@ -65,4 +72,9 @@ __all__ = [
     "UserPreferences",
     "Venue",
     "VenueOffer",
+    "AuditEvent",
+    "FeatureFlag",
+    "MaintenanceState",
+    "OperationalSettings",
+    "UserDefaults",
 ]
