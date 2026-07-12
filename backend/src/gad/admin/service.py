@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gad.exceptions import NotFoundError
+from gad.exceptions import ConflictError, NotFoundError
 from gad.models.enums import UserStatus
 from gad.models.match import Match
 from gad.models.plan import Plan
@@ -69,6 +69,45 @@ async def ban_user(session: AsyncSession, store, user_id: UUID) -> User:
     """Suspende al usuario y revoca sus tokens activos."""
     user = await set_user_status(session, user_id, UserStatus.suspended)
     await store.revoke_user(str(user_id), ttl_seconds=7 * 86400)
+    return user
+
+
+async def _get_user_or_404(session: AsyncSession, user_id: UUID) -> User:
+    result = await session.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise NotFoundError("Usuario no encontrado")
+    return user
+
+
+async def grant_admin(session: AsyncSession, user_id: UUID) -> User:
+    user = await _get_user_or_404(session, user_id)
+    user.is_admin = True
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
+async def revoke_admin(
+    session: AsyncSession, user_id: UUID, *, actor_id: UUID
+) -> User:
+    # Protección: un admin no puede quitarse el rol a sí mismo.
+    if user_id == actor_id:
+        raise ConflictError("No podés quitarte el rol de administrador a vos mismo")
+    user = await _get_user_or_404(session, user_id)
+    # Protección: no dejar el sistema sin admins activos.
+    active_admins = (
+        await session.execute(
+            select(func.count(User.id)).where(
+                User.is_admin.is_(True), User.status == UserStatus.active
+            )
+        )
+    ).scalar_one()
+    if active_admins <= 1:
+        raise ConflictError("No se puede revocar el último administrador activo")
+    user.is_admin = False
+    await session.commit()
+    await session.refresh(user)
     return user
 
 
