@@ -3,12 +3,9 @@ from uuid import uuid4
 
 from gad.admin.settings_schemas import (
     AuditEventOut,
-    FeatureFlagOut,
     MaintenanceIn,
-    MaintenanceOut,
     OperationalSettingsOut,
     UserDefaultsIn,
-    UserDefaultsOut,
 )
 
 

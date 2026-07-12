@@ -1,6 +1,14 @@
 # backend/src/gad/feature_flags.py
 """Catálogo de feature flags y reglas de fail-open/fail-closed."""
 
+from typing import Annotated
+
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from gad.db import get_session
+from gad.exceptions import GADError
+
 # Flags que, si no existen en DB, se asumen deshabilitados (fail-closed).
 FAIL_CLOSED_FLAGS = {"maintenance_block"}
 
@@ -13,14 +21,6 @@ DEFAULT_FLAGS: dict[str, str] = {
     "safety_sos": "Botón de SOS y compartir ubicación",
     "maintenance_block": "Complemento del modo mantenimiento (fail-closed)",
 }
-
-from typing import Annotated
-
-from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from gad.db import get_session
-from gad.exceptions import GADError
 
 
 class FeatureDisabledError(GADError):

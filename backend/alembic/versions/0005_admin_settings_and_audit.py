@@ -10,8 +10,9 @@ Create Date: 2026-07-12
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = "0005"
 down_revision: str | None = "99b9b144cd51"
@@ -25,6 +26,16 @@ def _has_table(table: str) -> bool:
     return table in inspector.get_table_names()
 
 
+def _ts_column(name: str) -> sa.Column:
+    """Columna de timestamp NOT NULL con server_default now()."""
+    return sa.Column(
+        name,
+        sa.DateTime(timezone=True),
+        server_default=sa.func.now(),
+        nullable=False,
+    )
+
+
 def upgrade() -> None:
     if not _has_table("user_defaults"):
         op.create_table(
@@ -36,9 +47,13 @@ def upgrade() -> None:
             sa.Column("age_range_max", sa.Integer(), nullable=False),
             sa.Column("group_size_preference", sa.String(length=30), nullable=False),
             sa.Column("gender_preference", sa.String(length=30), nullable=False),
-            sa.Column("activity_types", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "activity_types",
+                postgresql.JSONB(astext_type=sa.Text()),
+                nullable=False,
+            ),
+            _ts_column("created_at"),
+            _ts_column("updated_at"),
             sa.PrimaryKeyConstraint("id", name=op.f("pk_user_defaults")),
         )
 
@@ -48,12 +63,14 @@ def upgrade() -> None:
             sa.Column("id", sa.Integer(), autoincrement=False, nullable=False),
             sa.Column("rate_limit_enabled", sa.Boolean(), nullable=False),
             sa.Column("default_rate_limit", sa.String(length=50), nullable=False),
-            sa.Column("access_token_expire_minutes", sa.Integer(), nullable=False),
+            sa.Column(
+                "access_token_expire_minutes", sa.Integer(), nullable=False
+            ),
             sa.Column("refresh_token_expire_days", sa.Integer(), nullable=False),
             sa.Column("max_avatar_bytes", sa.Integer(), nullable=False),
             sa.Column("ws_max_message_rate", sa.Integer(), nullable=False),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            _ts_column("created_at"),
+            _ts_column("updated_at"),
             sa.PrimaryKeyConstraint("id", name=op.f("pk_operational_settings")),
         )
 
@@ -63,8 +80,8 @@ def upgrade() -> None:
             sa.Column("key", sa.String(length=50), nullable=False),
             sa.Column("enabled", sa.Boolean(), nullable=False),
             sa.Column("description", sa.Text(), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            _ts_column("created_at"),
+            _ts_column("updated_at"),
             sa.PrimaryKeyConstraint("key", name=op.f("pk_feature_flags")),
         )
 
@@ -77,10 +94,16 @@ def upgrade() -> None:
             sa.Column("banner_active", sa.Boolean(), nullable=False),
             sa.Column("banner_message", sa.Text(), nullable=False),
             sa.Column("banner_level", sa.String(length=10), nullable=False),
-            sa.Column("updated_by", postgresql.UUID(as_uuid=True), nullable=True),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.ForeignKeyConstraint(["updated_by"], ["users.id"], name=op.f("fk_maintenance_state_updated_by_users")),
+            sa.Column(
+                "updated_by", postgresql.UUID(as_uuid=True), nullable=True
+            ),
+            _ts_column("created_at"),
+            _ts_column("updated_at"),
+            sa.ForeignKeyConstraint(
+                ["updated_by"],
+                ["users.id"],
+                name=op.f("fk_maintenance_state_updated_by_users"),
+            ),
             sa.PrimaryKeyConstraint("id", name=op.f("pk_maintenance_state")),
         )
 
@@ -92,9 +115,13 @@ def upgrade() -> None:
             sa.Column("action", sa.String(length=50), nullable=False),
             sa.Column("target_type", sa.String(length=30), nullable=False),
             sa.Column("target_id", sa.String(length=100), nullable=True),
-            sa.Column("detail", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "detail",
+                postgresql.JSONB(astext_type=sa.Text()),
+                nullable=False,
+            ),
+            _ts_column("created_at"),
+            _ts_column("updated_at"),
             sa.PrimaryKeyConstraint("id", name=op.f("pk_audit_events")),
         )
         op.create_index(op.f("ix_audit_events_action"), "audit_events", ["action"])

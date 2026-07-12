@@ -10,10 +10,8 @@ from gad.feature_flags import require_feature
 
 
 def _build_app(db_engine):
-    from sqlalchemy import select
 
     from gad.db import get_session
-    from gad.models.settings import FeatureFlag
 
     app = FastAPI()
     test_sm = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)

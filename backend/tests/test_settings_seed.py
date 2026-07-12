@@ -17,9 +17,17 @@ async def test_seed_creates_singletons(db_engine):
     )
 
     async with test_sm() as s:
-        assert (await s.execute(select(UserDefaults).where(UserDefaults.id == 1))).scalar_one()
-        assert (await s.execute(select(OperationalSettings).where(OperationalSettings.id == 1))).scalar_one()
-        assert (await s.execute(select(MaintenanceState).where(MaintenanceState.id == 1))).scalar_one()
+        assert (
+            await s.execute(select(UserDefaults).where(UserDefaults.id == 1))
+        ).scalar_one()
+        assert (
+            await s.execute(
+                select(OperationalSettings).where(OperationalSettings.id == 1)
+            )
+        ).scalar_one()
+        assert (
+            await s.execute(select(MaintenanceState).where(MaintenanceState.id == 1))
+        ).scalar_one()
         flags = (await s.execute(select(FeatureFlag))).scalars().all()
         flag_keys = {f.key for f in flags}
         assert "reviews" in flag_keys

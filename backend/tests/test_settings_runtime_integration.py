@@ -1,4 +1,3 @@
-import pytest
 
 from gad.auth.jwt import create_access_token, decode_token
 

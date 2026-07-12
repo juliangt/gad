@@ -1,13 +1,12 @@
 # backend/src/gad/main.py
 from contextlib import asynccontextmanager, suppress
 
-from sqlalchemy import select
-
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import select
 
 from gad.admin.router import router as admin_router
 from gad.auth.router import router as auth_router

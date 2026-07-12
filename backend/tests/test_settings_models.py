@@ -5,7 +5,6 @@ from gad.models.settings import (
     AuditEvent,
     FeatureFlag,
     MaintenanceState,
-    OperationalSettings,
     UserDefaults,
 )
 
@@ -67,7 +66,9 @@ async def test_audit_event_stores_jsonb_detail(db_session):
     )
     db_session.add(ev)
     await db_session.commit()
-    result = await db_session.execute(select(AuditEvent).where(AuditEvent.action == "settings.update"))
+    result = await db_session.execute(
+        select(AuditEvent).where(AuditEvent.action == "settings.update")
+    )
     stored = result.scalar_one()
     assert stored.detail["after"]["x"] == 2
     assert stored.actor_id == actor

@@ -24,9 +24,6 @@ from gad.models.plan import Plan, PlanApplication
 from gad.models.report import Report
 from gad.models.review import Review
 from gad.models.safety import SafetyEvent, SafetySession, TrustedContact
-from gad.models.social import Block, Notification, PushSubscription
-from gad.models.user import User, UserPreferences
-from gad.models.venue import Venue, VenueOffer
 from gad.models.settings import (
     AuditEvent,
     FeatureFlag,
@@ -34,6 +31,9 @@ from gad.models.settings import (
     OperationalSettings,
     UserDefaults,
 )
+from gad.models.social import Block, Notification, PushSubscription
+from gad.models.user import User, UserPreferences
+from gad.models.venue import Venue, VenueOffer
 
 __all__ = [
     "Base",

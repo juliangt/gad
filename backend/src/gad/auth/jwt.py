@@ -12,7 +12,11 @@ from gad.config import get_settings
 def create_access_token(user_id: str, expires_in_minutes: int | None = None) -> str:
     settings = get_settings()
     now = datetime.now(UTC)
-    minutes = expires_in_minutes if expires_in_minutes is not None else settings.access_token_expire_minutes
+    minutes = (
+        expires_in_minutes
+        if expires_in_minutes is not None
+        else settings.access_token_expire_minutes
+    )
     payload = {
         "sub": user_id,
         "type": "access",
@@ -28,7 +32,11 @@ def create_access_token(user_id: str, expires_in_minutes: int | None = None) -> 
 def create_refresh_token(user_id: str, expires_in_days: int | None = None) -> str:
     settings = get_settings()
     now = datetime.now(UTC)
-    days = expires_in_days if expires_in_days is not None else settings.refresh_token_expire_days
+    days = (
+        expires_in_days
+        if expires_in_days is not None
+        else settings.refresh_token_expire_days
+    )
     payload = {
         "sub": user_id,
         "type": "refresh",

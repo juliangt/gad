@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.admin.dependencies import require_admin
-from gad.admin.settings_router import router as settings_router
 from gad.admin.schemas import (
     AdminStatsOut,
     AdminUserOut,
@@ -28,6 +27,7 @@ from gad.admin.service import (
     list_users_admin,
     update_report_status_admin,
 )
+from gad.admin.settings_router import router as settings_router
 from gad.db import get_session
 from gad.models.user import User
 from gad.reports.schemas import ReportOut
