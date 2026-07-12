@@ -194,3 +194,52 @@ export interface AdminPlanDetailOut {
   host_email: string;
   host_name: string;
 }
+
+/** GET /admin/settings/user-defaults */
+export interface UserDefaultsOut {
+  default_plan_validity_mins: number;
+  default_search_radius_m: number;
+  age_range_min: number;
+  age_range_max: number;
+  group_size_preference: string;
+  gender_preference: string;
+  activity_types: string[];
+}
+
+/** GET /admin/settings/operational */
+export interface OperationalSettingsOut {
+  rate_limit_enabled: boolean;
+  default_rate_limit: string;
+  access_token_expire_minutes: number;
+  refresh_token_expire_days: number;
+  max_avatar_bytes: number;
+  ws_max_message_rate: number;
+}
+
+/** GET /admin/settings/feature-flags */
+export interface FeatureFlagOut {
+  key: string;
+  enabled: boolean;
+  description: string | null;
+}
+
+/** GET /admin/settings/maintenance */
+export interface MaintenanceOut {
+  enabled: boolean;
+  message: string;
+  banner_active: boolean;
+  banner_message: string;
+  banner_level: 'info' | 'warning';
+  updated_by: string | null;
+}
+
+/** GET /admin/settings/audit */
+export interface AuditEventOut {
+  id: string;
+  actor_id: string | null;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  detail: Record<string, unknown>;
+  created_at: string;
+}

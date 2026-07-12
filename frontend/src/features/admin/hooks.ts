@@ -4,7 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { apiGet, apiPost, apiPatch, apiDelete } from '../../api/client';
+import { apiGet, apiPost, apiPatch, apiDelete, apiPut } from '../../api/client';
 import { toast } from 'sonner';
 import type { PaginatedOut, OKMessage } from '../../types/common';
 import type {
@@ -23,6 +23,11 @@ import type {
   VenueOfferCreateInput,
   AdminPlanListItem,
   AdminPlanDetailOut,
+  UserDefaultsOut,
+  OperationalSettingsOut,
+  FeatureFlagOut,
+  MaintenanceOut,
+  AuditEventOut,
 } from './types';
 
 export const adminKeys = {
@@ -41,6 +46,11 @@ export const adminKeys = {
   planDetail: (id: string) => ['admin', 'plans', id] as const,
   planApplications: (id: string) => ['admin', 'plans', id, 'applications'] as const,
   planMatches: (id: string) => ['admin', 'plans', id, 'matches'] as const,
+  userDefaults: () => ['admin', 'settings', 'user-defaults'] as const,
+  operational: () => ['admin', 'settings', 'operational'] as const,
+  featureFlags: () => ['admin', 'settings', 'feature-flags'] as const,
+  maintenance: () => ['admin', 'settings', 'maintenance'] as const,
+  audit: (action?: string) => ['admin', 'settings', 'audit', { action }] as const,
 };
 
 const PAGE_SIZE = 50;
@@ -407,5 +417,101 @@ export function useCreateVenueOffer() {
       toast.success('Oferta creada.');
     },
     onError: () => toast.error('No se pudo crear la oferta.'),
+  });
+}
+
+// ---------- Global settings (SP3-task1) ----------
+
+export function useUserDefaults() {
+  return useQuery({
+    queryKey: adminKeys.userDefaults(),
+    queryFn: () => apiGet<UserDefaultsOut>('/admin/settings/user-defaults'),
+    staleTime: 30_000,
+  });
+}
+
+export function useUpdateUserDefaults() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UserDefaultsOut) =>
+      apiPut<UserDefaultsOut>('/admin/settings/user-defaults', input),
+    onSuccess: (updated) => {
+      qc.setQueryData(adminKeys.userDefaults(), updated);
+      toast.success('Configuración guardada.');
+    },
+    onError: () => toast.error('No se pudo guardar la configuración.'),
+  });
+}
+
+export function useOperational() {
+  return useQuery({
+    queryKey: adminKeys.operational(),
+    queryFn: () => apiGet<OperationalSettingsOut>('/admin/settings/operational'),
+    staleTime: 30_000,
+  });
+}
+
+export function useUpdateOperational() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: OperationalSettingsOut) =>
+      apiPut<OperationalSettingsOut>('/admin/settings/operational', input),
+    onSuccess: (updated) => {
+      qc.setQueryData(adminKeys.operational(), updated);
+      toast.success('Configuración guardada.');
+    },
+    onError: () => toast.error('No se pudo guardar la configuración.'),
+  });
+}
+
+export function useFeatureFlags() {
+  return useQuery({
+    queryKey: adminKeys.featureFlags(),
+    queryFn: () => apiGet<FeatureFlagOut[]>('/admin/settings/feature-flags'),
+    staleTime: 30_000,
+  });
+}
+
+export function useUpdateFeatureFlag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ key, enabled }: { key: string; enabled: boolean }) =>
+      apiPut<FeatureFlagOut>(`/admin/settings/feature-flags/${key}`, { enabled }),
+    onSettled: () => qc.invalidateQueries({ queryKey: adminKeys.featureFlags() }),
+    onError: () => toast.error('No se pudo actualizar el feature flag.'),
+  });
+}
+
+export function useMaintenance() {
+  return useQuery({
+    queryKey: adminKeys.maintenance(),
+    queryFn: () => apiGet<MaintenanceOut>('/admin/settings/maintenance'),
+    staleTime: 10_000,
+  });
+}
+
+export function useUpdateMaintenance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Omit<MaintenanceOut, 'updated_by'>) =>
+      apiPut<MaintenanceOut>('/admin/settings/maintenance', input),
+    onSuccess: (updated) => {
+      qc.setQueryData(adminKeys.maintenance(), updated);
+      toast.success(updated.enabled ? 'Modo mantenimiento activado.' : 'Configuración guardada.');
+    },
+    onError: () => toast.error('No se pudo guardar la configuración.'),
+  });
+}
+
+export function useAuditLog(action?: string) {
+  return useInfiniteQuery({
+    queryKey: adminKeys.audit(action),
+    queryFn: ({ pageParam }: { pageParam?: string }) =>
+      apiGet<PaginatedOut<AuditEventOut>>('/admin/settings/audit', {
+        query: { action, limit: PAGE_SIZE, before: pageParam },
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
+    staleTime: 30_000,
   });
 }

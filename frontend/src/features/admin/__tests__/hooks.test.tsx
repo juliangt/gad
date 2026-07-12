@@ -11,6 +11,9 @@ import {
   useAdminUsers,
   useGrantAdmin,
   useResetUserPassword,
+  useUserDefaults,
+  useUpdateFeatureFlag,
+  useMaintenance,
 } from '../hooks';
 
 vi.mock('../../../api/client', () => ({
@@ -18,6 +21,7 @@ vi.mock('../../../api/client', () => ({
   apiPost: vi.fn(),
   apiPatch: vi.fn(),
   apiDelete: vi.fn(),
+  apiPut: vi.fn(),
 }));
 
 function createWrapper() {
@@ -109,5 +113,32 @@ describe('useResetUserPassword', () => {
     const { result } = renderHook(() => useResetUserPassword(), { wrapper: createWrapper() });
     const res = await result.current.mutateAsync('u1');
     expect(res.temporary_password).toBe('TempPass12345678');
+  });
+});
+
+describe('useUserDefaults', () => {
+  it('obtiene los defaults de usuario', async () => {
+    (client.apiGet as any).mockResolvedValue({ default_plan_validity_mins: 120 });
+    const { result } = renderHook(() => useUserDefaults(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.data?.default_plan_validity_mins).toBe(120));
+    expect(client.apiGet).toHaveBeenCalledWith('/admin/settings/user-defaults');
+  });
+});
+
+describe('useUpdateFeatureFlag', () => {
+  it('pega al endpoint de feature flag correcto', async () => {
+    (client.apiPut as any).mockResolvedValue({ key: 'reviews', enabled: false });
+    const { result } = renderHook(() => useUpdateFeatureFlag(), { wrapper: createWrapper() });
+    await result.current.mutateAsync({ key: 'reviews', enabled: false });
+    expect(client.apiPut).toHaveBeenCalledWith('/admin/settings/feature-flags/reviews', { enabled: false });
+  });
+});
+
+describe('useMaintenance', () => {
+  it('lee el estado de mantenimiento', async () => {
+    (client.apiGet as any).mockResolvedValue({ enabled: false, banner_active: false });
+    const { result } = renderHook(() => useMaintenance(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.data?.enabled).toBe(false));
+    expect(client.apiGet).toHaveBeenCalledWith('/admin/settings/maintenance');
   });
 });
