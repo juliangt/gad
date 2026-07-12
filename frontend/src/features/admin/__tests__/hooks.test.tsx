@@ -14,6 +14,8 @@ import {
   useUserDefaults,
   useUpdateFeatureFlag,
   useMaintenance,
+  useUpdateVenue,
+  useDeleteVenueOffer,
 } from '../hooks';
 
 vi.mock('../../../api/client', () => ({
@@ -140,5 +142,23 @@ describe('useMaintenance', () => {
     const { result } = renderHook(() => useMaintenance(), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.data?.enabled).toBe(false));
     expect(client.apiGet).toHaveBeenCalledWith('/admin/settings/maintenance');
+  });
+});
+
+describe('useUpdateVenue', () => {
+  it('hace PATCH al venue con el body correcto', async () => {
+    (client.apiPatch as any).mockResolvedValue({ id: 'v1', name: 'Actualizado' });
+    const { result } = renderHook(() => useUpdateVenue(), { wrapper: createWrapper() });
+    await result.current.mutateAsync({ venueId: 'v1', input: { name: 'Actualizado' } });
+    expect(client.apiPatch).toHaveBeenCalledWith('/admin/venues/v1', { name: 'Actualizado' });
+  });
+});
+
+describe('useDeleteVenueOffer', () => {
+  it('usa DELETE contra la oferta del venue', async () => {
+    (client.apiDelete as any).mockResolvedValue({ message: 'ok' });
+    const { result } = renderHook(() => useDeleteVenueOffer(), { wrapper: createWrapper() });
+    await result.current.mutateAsync({ venueId: 'v1', offerId: 'o1' });
+    expect(client.apiDelete).toHaveBeenCalledWith('/admin/venues/v1/offers/o1');
   });
 });

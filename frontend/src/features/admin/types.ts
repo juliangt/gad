@@ -155,6 +155,28 @@ export interface VenueOfferCreateInput {
   valid_until: string;
 }
 
+/** Body de PATCH /admin/venues/{id} (todos opcionales) */
+export interface VenueUpdateInput {
+  name?: string;
+  category?: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+  owner_name?: string;
+  owner_email?: string;
+  owner_phone?: string | null;
+}
+
+/** Body de PATCH /admin/venues/{id}/offers/{offerId} (todos opcionales) */
+export interface VenueOfferUpdateInput {
+  title?: string;
+  description?: string;
+  redemption_method?: string;
+  valid_from?: string;
+  valid_until?: string;
+  active?: boolean;
+}
+
 /** `GET /admin/plans` — ítem del listado admin de planes. */
 export interface AdminPlanListItem {
   id: string;

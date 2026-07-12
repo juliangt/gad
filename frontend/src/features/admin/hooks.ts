@@ -21,6 +21,9 @@ import type {
   VenueAdminOut,
   VenueCreateInput,
   VenueOfferCreateInput,
+  VenueUpdateInput,
+  VenueOfferUpdateInput,
+  VenueOfferAdminOut,
   AdminPlanListItem,
   AdminPlanDetailOut,
   UserDefaultsOut,
@@ -417,6 +420,46 @@ export function useCreateVenueOffer() {
       toast.success('Oferta creada.');
     },
     onError: () => toast.error('No se pudo crear la oferta.'),
+  });
+}
+
+export function useUpdateVenue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ venueId, input }: { venueId: string; input: VenueUpdateInput }) =>
+      apiPatch<VenueAdminOut>(`/admin/venues/${venueId}`, input),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'venues'] }),
+    onSuccess: () => toast.success('Venue actualizado.'),
+    onError: () => toast.error('No se pudo actualizar el venue.'),
+  });
+}
+
+export function useUpdateVenueOffer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      venueId,
+      offerId,
+      input,
+    }: {
+      venueId: string;
+      offerId: string;
+      input: VenueOfferUpdateInput;
+    }) => apiPatch<VenueOfferAdminOut>(`/admin/venues/${venueId}/offers/${offerId}`, input),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'venues'] }),
+    onSuccess: () => toast.success('Oferta actualizada.'),
+    onError: () => toast.error('No se pudo actualizar la oferta.'),
+  });
+}
+
+export function useDeleteVenueOffer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ venueId, offerId }: { venueId: string; offerId: string }) =>
+      apiDelete<OKMessage>(`/admin/venues/${venueId}/offers/${offerId}`),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'venues'] }),
+    onSuccess: () => toast.success('Oferta eliminada.'),
+    onError: () => toast.error('No se pudo eliminar la oferta.'),
   });
 }
 
