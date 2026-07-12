@@ -95,7 +95,18 @@ El nicho es el cruce entre *compañía espontánea de corta duración*, *ubicaci
 - **Ver reseñas de un usuario** — consultar historial y reputación.
 - **Borrar reseña propia** — eliminar y recalcular reputación.
 - **Reportar usuario** — reportar comportamiento inadecuado.
-- **Panel de admin** — estadísticas, gestionar reportes, banear/suspender/reactivar usuarios, cancelar planes, eliminar reseñas.
+
+### Panel de administración
+
+Consola de uso privado para un operador (rol `is_admin`). Todo endpoint exige `require_admin` y toda escritura registra un `AuditEvent`.
+
+- **Dashboard** — estadísticas (usuarios, planes, matches, reportes abiertos).
+- **Reportes** — revisar y resolver reportes de usuarios.
+- **Reseñas** — moderar y eliminar reseñas.
+- **Usuarios** — búsqueda/filtros (`q`, `status`, `is_admin`), gestionar rol admin (`grant`/`revoke` con protección de auto-revocado y último admin), editar datos (`PATCH`), reset password con contraseña temporal fuerte (revoca sesiones), y **detalle 360°** con historial (planes, matches, reportes recibidos/emitidos, reseñas dadas/recibidas, agregados).
+- **Planes** — listado con filtros (status, actividad, host, rango de fechas, búsqueda), detalle sin anonimizar (host completo + ubicación del grid ~150m, `exact_location` siempre `None`), aplicaciones y matches, y acciones (cancelar, ocultar/mostrar, cerrar, cancelar match).
+- **Configuración global** — defaults de usuarios, parámetros operativos en caliente, feature flags, modo mantenimiento + banner global, y **auditoría** filtrable. Los settings persistidos en DB pisan los defaults de env-vars en runtime (override DB > env-var, cache invalidable); los secretos nunca son editables.
+- **Gestión de admin** — otorgar/revocar rol admin vía CLI (`scripts/make_admin.py`).
 
 ### Notificaciones
 - **Recibir notificaciones in-app** — postulaciones, matches, mensajes, seguridad, alertas.
@@ -113,21 +124,23 @@ El nicho es el cruce entre *compañía espontánea de corta duración*, *ubicaci
 - **Notificaciones push:** Web Push API (pywebpush + VAPID).
 - **Jobs:** APScheduler (expiración periódica de planes y disponibilidad).
 - **Observabilidad:** structlog (logging) + Prometheus (métricas).
+- **Configuración en caliente:** settings persistidos en DB (override DB > env-vars, cache invalidable), feature flags con fail-open controlado y modo mantenimiento (middleware 503 con exenciones).
+- **Auditoría:** toda escritura del panel admin registra un `AuditEvent` (actor, acción, target, detalle).
 - **Frontend:** React 19 + Vite 6 + TypeScript + Tailwind v4, TanStack Query v5, react-router-dom v7, Leaflet + OpenStreetMap.
 
 ## Estado del proyecto
 
-El **backend está implementado**: autenticación completa, planes geolocalizados, matching por postulación, chat en tiempo real (WebSocket), modo disponible con alertas, seguridad (ubicación en vivo, contactos de confianza, SOS), reseñas y reputación, reportes, notificaciones in-app y push, panel de admin, rate limiting, headers de seguridad y observabilidad.
+El **backend está implementado**: autenticación completa, planes geolocalizados, matching por postulación, chat en tiempo real (WebSocket), modo disponible con alertas, seguridad (ubicación en vivo, contactos de confianza, SOS), reseñas y reputación, reportes, notificaciones in-app y push, rate limiting, headers de seguridad y observabilidad. El **panel de admin** del backend cubre moderación (reportes, reseñas, ban/suspender/reactivar usuarios), gestión avanzada de usuarios (rol admin, edición, reset password, detalle 360°), gestión de planes (listado, detalle sin anonimizar, acciones, aplicaciones/matches) y **configuración global** (defaults, parámetros operativos, feature flags, mantenimiento + banner, auditoría) con override DB > env-vars.
 
-El **frontend está implementado** (fases F0–F7) en [`frontend/`](frontend/): autenticación (email + Google), perfil y preferencias, planes (explorar/crear/editar/cancelar), matching (postularse, aceptar/rechazar, matches), seguridad (contactos, live-tracking, peer, SOS, share-link + QR, vista pública), reseñas, reportes, modo disponible, notificaciones (lista, badge con polling, marcar/borrar) y panel de admin (dashboard, reportes, usuarios, reseñas). Build de producción verde, tests unitarios con Vitest.
+El **frontend está implementado** (fases F0–F7) en [`frontend/`](frontend/): autenticación (email + Google), perfil y preferencias, planes (explorar/crear/editar/cancelar), matching (postularse, aceptar/rechazar, matches), seguridad (contactos, live-tracking, peer, SOS, share-link + QR, vista pública), reseñas, reportes, modo disponible, notificaciones (lista, badge con polling, marcar/borrar) y **panel de admin** (dashboard, reportes, usuarios con detalle 360°, planes con detalle y acciones, configuración global con 5 tabs, reseñas). Build de producción verde, tests unitarios con Vitest y E2E con Playwright.
 
 ### Pendiente / Fuera de alcance
 
-Lo siguiente **no** está implementado en el frontend y queda como trabajo futuro:
+Lo siguiente **no** está implementado y queda como trabajo futuro:
 
 - **F5 — Chat realtime (WebSocket):** conexión WS, mensajería en vivo dentro del match. Actualmente no hay cliente de chat.
 - **F7 — PWA / Web Push:** `vite-plugin-pwa`, service worker custom (`src/sw.ts`), `PushManager.subscribe` y VAPID. Los hooks de push (`useVapidPublicKey`, `useRegisterPush`, `useUnregisterPush`) existen en `features/notifications/hooks.ts` pero no hay UI ni SW que los consuma; las notificaciones operan vía HTTP poll.
-- **CI de frontend:** workflow de GitHub Actions (lint, build, test).
+- **SP4 — Venues admin (UI):** los endpoints de venues sponsoreados ya existen en el backend; falta la página de gestión/carga en el panel admin. El spec y el plan están en `docs/superpowers/`.
 
 ## Estructura
 
@@ -152,8 +165,11 @@ gad/
 │   │   ├── reviews/          # reseñas + reputación
 │   │   ├── reports/          # reportes de usuarios
 │   │   ├── notifications/    # notificaciones in-app + Web Push
-│   │   ├── admin/            # panel de moderación
-│   │   └── models/           # modelos SQLAlchemy + GeoAlchemy2
+│   │   ├── admin/            # panel de moderación + usuarios/planes/settings
+│   │   ├── middleware/       # mantenimiento (503 con exenciones), rate limit
+│   │   ├── feature_flags.py  # dependencia require_feature (fail-open controlado)
+│   │   ├── settings_cache.py # SettingsService (override DB > env-var, cache)
+│   │   └── models/           # modelos SQLAlchemy + GeoAlchemy2 (settings, audit)
 │   ├── alembic/              # migraciones
 │   ├── scripts/make_admin.py # CLI para otorgar/revocar rol admin
 │   └── scripts/seed.py       # CLI para poblar datos de prueba
@@ -179,7 +195,9 @@ gad/
             ├── reports/      # reportes de usuarios
             ├── availability/ # modo disponible
             ├── notifications/# lista, badge, marcar/borrar
-            └── admin/        # dashboard, reportes, usuarios, reseñas
+            └── admin/        # dashboard, reportes, usuarios (+detalle 360°),
+                              # planes (+detalle/acciones), configuración global,
+                              # reseñas
 ```
 
 ## Comandos (Makefile)
