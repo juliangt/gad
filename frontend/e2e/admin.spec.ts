@@ -30,6 +30,17 @@ test.describe('Admin — panel y guards', () => {
     await expect(page.getByRole('link', { name: 'Planes' }).first()).toBeVisible();
   });
 
+  test('admin ve la página de venues sponsoreados desde la nav', async ({ page }) => {
+    await loginAs(page, 'admin');
+
+    await page.goto('/admin/venues');
+    await expect(page.getByRole('heading', { name: 'Venues sponsoreados' })).toBeVisible();
+    // La nav incluye el enlace a Venues.
+    await expect(page.getByRole('link', { name: 'Venues' }).first()).toBeVisible();
+    // El botón de alta está presente.
+    await expect(page.getByRole('button', { name: 'Nuevo venue' })).toBeVisible();
+  });
+
   test('usuario no-admin es redirigido fuera del panel', async ({ page }) => {
     // RequireAdminRoute: auth pero no admin → <Navigate to="/explore" replace />.
     await loginAs(page, 'alice');
