@@ -261,6 +261,24 @@ async def update_user_endpoint(
     )
 
 
+@router.get("/users/{user_id}", response_model=AdminUserDetailOut)
+async def get_user_detail_endpoint(
+    user_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AdminUserDetailOut:
+    from gad.admin.service import get_user_detail_admin
+
+    data = await get_user_detail_admin(session, user_id)
+    return _user_to_detail_out(
+        data["user"],
+        plans_count=data["plans_count"],
+        matches_count=data["matches_count"],
+        reports_received=data["reports_received"],
+        avg_rating=data["avg_rating"],
+    )
+
+
 @router.post("/users/{user_id}/reset-password")
 async def admin_reset_password_endpoint(
     user_id: UUID,

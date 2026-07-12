@@ -9,9 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from gad.auth.passwords import hash_password
 from gad.exceptions import ConflictError, NotFoundError
 from gad.models.enums import UserStatus
-from gad.models.match import Match
+from gad.models.match import Match, MatchParticipant
 from gad.models.plan import Plan
 from gad.models.report import Report
+from gad.models.review import Review
 from gad.models.user import User
 from gad.users.service import set_user_status
 
@@ -123,6 +124,39 @@ async def update_user_admin(session: AsyncSession, user_id: UUID, data) -> User:
     await session.commit()
     await session.refresh(user)
     return user
+
+
+async def get_user_detail_admin(session: AsyncSession, user_id: UUID) -> dict:
+    """Devuelve el usuario + agregados para la vista 360°."""
+    user = await _get_user_or_404(session, user_id)
+    plans_count = (
+        await session.execute(select(func.count(Plan.id)).where(Plan.host_id == user_id))
+    ).scalar_one()
+    matches_count = (
+        await session.execute(
+            select(func.count(MatchParticipant.user_id)).where(
+                MatchParticipant.user_id == user_id
+            )
+        )
+    ).scalar_one()
+    reports_received = (
+        await session.execute(
+            select(func.count(Report.id)).where(Report.reported_id == user_id)
+        )
+    ).scalar_one()
+    avg_rating_result = (
+        await session.execute(
+            select(func.avg(Review.rating)).where(Review.reviewee_id == user_id)
+        )
+    ).scalar_one()
+    avg_rating = float(avg_rating_result) if avg_rating_result is not None else 0.0
+    return {
+        "user": user,
+        "plans_count": plans_count,
+        "matches_count": matches_count,
+        "reports_received": reports_received,
+        "avg_rating": round(avg_rating, 2),
+    }
 
 
 async def admin_reset_password(
