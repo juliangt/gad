@@ -35,6 +35,60 @@ export interface AdminUserOut {
   created_at: string;
 }
 
+/** `GET /admin/users/{id}` — detalle extendido de un usuario. */
+export interface AdminUserDetailOut extends AdminUserOut {
+  avatar_url: string | null;
+  bio: string | null;
+  birth_date: string | null;
+  gender: string;
+  locale: string;
+  timezone: string;
+  verification_level: string;
+  last_active_at: string | null;
+  google_id: string | null;
+  plans_count: number;
+  matches_count: number;
+  reports_received: number;
+  avg_rating: number;
+}
+
+/** Body de `PATCH /admin/users/{id}`. */
+export interface AdminUserUpdateInput {
+  display_name?: string;
+  email?: string;
+  locale?: string;
+  timezone?: string;
+  verification_level?: string;
+}
+
+/** `GET /admin/users/{id}/plans` — página de planes del usuario. */
+export interface AdminUserPlansPage {
+  items: AdminUserPlanItem[];
+  next_cursor: string | null;
+}
+
+/** Item de `AdminUserPlansPage`. */
+export interface AdminUserPlanItem {
+  id: string;
+  title: string;
+  activity_type: string;
+  status: string;
+  created_at: string;
+  expires_at: string;
+}
+
+/** `GET /admin/users/{id}/reports` — reportes emitidos y recibidos. */
+export interface AdminUserReports {
+  filed: ReportOut[];
+  received: ReportOut[];
+}
+
+/** `GET /admin/users/{id}/reviews` — reseñas emitidas y recibidas. */
+export interface AdminUserReviews {
+  given: AdminReviewOut[];
+  received: AdminReviewOut[];
+}
+
 /** Body de `PATCH /admin/reports/{id}`. */
 export interface ReportStatusUpdate {
   status: string;

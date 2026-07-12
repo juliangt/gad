@@ -8,6 +8,9 @@ import {
   useAdminReports,
   useUpdateReportStatus,
   useBanUser,
+  useAdminUsers,
+  useGrantAdmin,
+  useResetUserPassword,
 } from '../hooks';
 
 vi.mock('../../../api/client', () => ({
@@ -77,5 +80,34 @@ describe('useBanUser', () => {
     const { result } = renderHook(() => useBanUser(), { wrapper: createWrapper() });
     await result.current.mutateAsync('u2');
     expect(client.apiPost).toHaveBeenCalledWith('/admin/users/u2/ban');
+  });
+});
+
+describe('useAdminUsers', () => {
+  it('pasa q e is_admin en la query', async () => {
+    (client.apiGet as any).mockResolvedValue({ items: [], next_cursor: null });
+    const { result } = renderHook(() => useAdminUsers(undefined, 'ali', true), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(client.apiGet).toHaveBeenCalledWith('/admin/users', expect.objectContaining({
+      query: expect.objectContaining({ q: 'ali', is_admin: true }),
+    }));
+  });
+});
+
+describe('useGrantAdmin', () => {
+  it('pega al endpoint correcto', async () => {
+    (client.apiPost as any).mockResolvedValue({ id: 'u1', is_admin: true });
+    const { result } = renderHook(() => useGrantAdmin(), { wrapper: createWrapper() });
+    await result.current.mutateAsync('u1');
+    expect(client.apiPost).toHaveBeenCalledWith('/admin/users/u1/grant-admin');
+  });
+});
+
+describe('useResetUserPassword', () => {
+  it('devuelve contraseña temporal', async () => {
+    (client.apiPost as any).mockResolvedValue({ temporary_password: 'TempPass12345678' });
+    const { result } = renderHook(() => useResetUserPassword(), { wrapper: createWrapper() });
+    const res = await result.current.mutateAsync('u1');
+    expect(res.temporary_password).toBe('TempPass12345678');
   });
 });

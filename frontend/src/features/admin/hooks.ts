@@ -10,6 +10,11 @@ import type { PaginatedOut, OKMessage } from '../../types/common';
 import type {
   AdminStatsOut,
   AdminUserOut,
+  AdminUserDetailOut,
+  AdminUserUpdateInput,
+  AdminUserPlanItem,
+  AdminUserReports,
+  AdminUserReviews,
   ReportOut,
   ReportStatusUpdate,
   AdminReviewOut,
@@ -22,7 +27,12 @@ export const adminKeys = {
   all: ['admin'] as const,
   stats: () => ['admin', 'stats'] as const,
   reports: (status?: string) => ['admin', 'reports', { status }] as const,
-  users: (status?: string) => ['admin', 'users', { status }] as const,
+  users: (status?: string, q?: string, isAdmin?: boolean) =>
+    ['admin', 'users', { status, q, isAdmin }] as const,
+  userDetail: (id: string) => ['admin', 'users', id] as const,
+  userPlans: (id: string) => ['admin', 'users', id, 'plans'] as const,
+  userReports: (id: string) => ['admin', 'users', id, 'reports'] as const,
+  userReviews: (id: string) => ['admin', 'users', id, 'reviews'] as const,
   reviews: () => ['admin', 'reviews'] as const,
   venues: (status?: string) => ['admin', 'venues', { status }] as const,
 };
@@ -71,12 +81,12 @@ export function useUpdateReportStatus() {
 
 // ---------- Users ----------
 
-export function useAdminUsers(status?: string) {
+export function useAdminUsers(status?: string, q?: string, isAdmin?: boolean) {
   return useInfiniteQuery({
-    queryKey: adminKeys.users(status),
+    queryKey: adminKeys.users(status, q, isAdmin),
     queryFn: ({ pageParam }: { pageParam?: string }) =>
       apiGet<PaginatedOut<AdminUserOut>>('/admin/users', {
-        query: { status, limit: PAGE_SIZE, before: pageParam },
+        query: { status, q, is_admin: isAdmin, limit: PAGE_SIZE, before: pageParam },
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
@@ -117,6 +127,87 @@ export function useActivateUser() {
     mutationFn: (userId: string) => apiPost<AdminUserOut>(`/admin/users/${userId}/activate`),
     onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
     ...userActionToast('Usuario reactivado.', 'No se pudo reactivar al usuario.'),
+  });
+}
+
+export function useGrantAdmin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => apiPost<AdminUserOut>(`/admin/users/${userId}/grant-admin`),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
+    ...userActionToast('Rol de admin otorgado.', 'No se pudo otorgar el rol.'),
+  });
+}
+
+export function useRevokeAdmin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => apiPost<AdminUserOut>(`/admin/users/${userId}/revoke-admin`),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
+    ...userActionToast('Rol de admin revocado.', 'No se pudo revocar el rol.'),
+  });
+}
+
+export function useResetUserPassword() {
+  return useMutation({
+    mutationFn: (userId: string) =>
+      apiPost<{ temporary_password: string }>(`/admin/users/${userId}/reset-password`),
+    onError: () => toast.error('No se pudo restablecer la contraseña.'),
+  });
+}
+
+export function useUpdateUserAdmin(userId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AdminUserUpdateInput) =>
+      apiPatch<AdminUserDetailOut>(`/admin/users/${userId}`, input),
+    onSuccess: (updated) => {
+      qc.setQueryData(adminKeys.userDetail(userId), updated);
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+      toast.success('Usuario actualizado.');
+    },
+    onError: () => toast.error('No se pudo actualizar el usuario.'),
+  });
+}
+
+export function useAdminUserDetail(userId: string) {
+  return useQuery({
+    queryKey: adminKeys.userDetail(userId),
+    queryFn: () => apiGet<AdminUserDetailOut>(`/admin/users/${userId}`),
+    enabled: Boolean(userId),
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminUserPlans(userId: string) {
+  return useInfiniteQuery({
+    queryKey: adminKeys.userPlans(userId),
+    queryFn: ({ pageParam }: { pageParam?: string }) =>
+      apiGet<PaginatedOut<AdminUserPlanItem>>(`/admin/users/${userId}/plans`, {
+        query: { limit: PAGE_SIZE, before: pageParam },
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
+    enabled: Boolean(userId),
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminUserReports(userId: string) {
+  return useQuery({
+    queryKey: adminKeys.userReports(userId),
+    queryFn: () => apiGet<AdminUserReports>(`/admin/users/${userId}/reports`),
+    enabled: Boolean(userId),
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminUserReviews(userId: string) {
+  return useQuery({
+    queryKey: adminKeys.userReviews(userId),
+    queryFn: () => apiGet<AdminUserReviews>(`/admin/users/${userId}/reviews`),
+    enabled: Boolean(userId),
+    staleTime: 30_000,
   });
 }
 
