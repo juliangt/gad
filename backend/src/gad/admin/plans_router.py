@@ -18,6 +18,7 @@ from gad.admin.plans_service import (
 )
 from gad.admin.settings_service import record_audit
 from gad.db import get_session
+from gad.matching.schemas import ApplicantSummary, ApplicationOut, MatchOut, ParticipantOut
 from gad.models.plan import Plan as PlanModel
 from gad.models.user import User
 from gad.schemas.pagination import PaginatedOut
@@ -152,3 +153,81 @@ async def admin_close_plan_endpoint(
         target_type="plan", target_id=str(plan_id), detail={},
     )
     return await _plan_to_detail(session, plan)
+
+
+@router.get("/{plan_id}/applications", response_model=list[ApplicationOut])
+async def admin_plan_applications_endpoint(
+    plan_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[ApplicationOut]:
+    from gad.models.plan import PlanApplication
+
+    result = await session.execute(
+        select(PlanApplication)
+        .where(PlanApplication.plan_id == plan_id)
+        .order_by(PlanApplication.created_at.desc())
+    )
+    apps = result.scalars().all()
+    # Cargar applicants en batch
+    user_ids = {a.applicant_id for a in apps}
+    users_map = {}
+    if user_ids:
+        users_result = await session.execute(select(User).where(User.id.in_(user_ids)))
+        for u in users_result.scalars().all():
+            users_map[u.id] = u
+    out = []
+    for a in apps:
+        u = users_map.get(a.applicant_id)
+        if u is None:
+            continue
+        out.append(
+            ApplicationOut(
+                id=a.id, plan_id=a.plan_id,
+                applicant=ApplicantSummary(
+                    id=u.id, display_name=u.display_name, avatar_url=u.avatar_url,
+                    reputation_score=u.reputation_score,
+                    verification_level=u.verification_level.value,
+                ),
+                status=a.status, message=a.message,
+                created_at=a.created_at, decided_at=a.decided_at,
+            )
+        )
+    return out
+
+
+@router.get("/{plan_id}/matches", response_model=list[MatchOut])
+async def admin_plan_matches_endpoint(
+    plan_id: UUID,
+    admin: Annotated[User, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[MatchOut]:
+    from gad.models.match import Match, MatchParticipant
+
+    result = await session.execute(
+        select(Match).where(Match.plan_id == plan_id).order_by(Match.started_at.desc())
+    )
+    matches = result.scalars().all()
+    out = []
+    for m in matches:
+        parts_result = await session.execute(
+            select(MatchParticipant, User)
+            .join(User, MatchParticipant.user_id == User.id)
+            .where(MatchParticipant.match_id == m.id)
+        )
+        participants = [
+            ParticipantOut(
+                user_id=u.id, display_name=u.display_name, avatar_url=u.avatar_url,
+                role=p.role, joined_at=p.joined_at,
+            )
+            for p, u in parts_result.all()
+        ]
+        out.append(
+            MatchOut(
+                id=m.id, plan_id=m.plan_id, status=m.status,
+                started_at=m.started_at, ended_at=m.ended_at,
+                location_sharing_active=m.location_sharing_active,
+                participants=participants,
+            )
+        )
+    return out
