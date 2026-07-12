@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gad.admin.dependencies import require_admin
+from gad.admin.settings_router import router as settings_router
 from gad.admin.schemas import (
     AdminStatsOut,
     AdminUserOut,
@@ -358,3 +359,7 @@ async def delete_offer_endpoint(
 ) -> dict[str, str]:
     await delete_offer(session, venue_id, offer_id)
     return {"message": "Oferta eliminada"}
+
+
+# Settings sub-router: rutas bajo /admin/settings/*
+router.include_router(settings_router)
