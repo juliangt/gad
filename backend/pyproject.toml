@@ -77,3 +77,8 @@ ignore = ["B008"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
+
+[dependency-groups]
+dev = [
+    "pytest-asyncio>=1.4.0",
+]

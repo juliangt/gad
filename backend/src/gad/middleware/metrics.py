@@ -1,6 +1,12 @@
 """Métricas Prometheus para el monolito GAD."""
-from fastapi import APIRouter, Response
+
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
+
+from gad.admin.dependencies import require_admin
+from gad.models.user import User
 
 REQUEST_COUNT = Counter(
     "gad_http_requests_total",
@@ -22,7 +28,7 @@ metrics_router = APIRouter(tags=["metrics"])
 
 
 @metrics_router.get("/metrics")
-async def metrics_endpoint() -> Response:
+async def metrics_endpoint(admin: Annotated[User, Depends(require_admin)]) -> Response:
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
