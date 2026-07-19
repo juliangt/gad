@@ -23,7 +23,7 @@ from gad.models.enums import (
 from gad.models.match import Match, MatchParticipant
 from gad.models.plan import Plan, PlanApplication
 from gad.models.user import User
-from gad.notifications.service import create_notification
+from gad.notifications.service import create_notification, create_notifications_bulk
 from gad.users.service import is_blocked_pair
 
 
@@ -71,9 +71,7 @@ async def apply_to_plan(
 
     # Best-effort: si Redis no está disponible, la postulación igual se completa.
     with suppress(Exception):
-        await publish_new_application(
-            str(plan.host_id), str(plan_id), str(applicant.id)
-        )
+        await publish_new_application(str(plan.host_id), str(plan_id), str(applicant.id))
     # Notificación in-app para el host
     with suppress(Exception):
         await create_notification(
@@ -167,21 +165,18 @@ async def accept_application(
                 str(match.id), str(plan.id), [str(u) for u in participant_ids]
             )
         # Notificación in-app de match para todos los participantes
-        for uid in participant_ids:
-            with suppress(Exception):
-                await create_notification(
-                    session,
-                    uid,
-                    NotificationType.match,
-                    {"match_id": str(match.id), "plan_id": str(plan.id)},
-                )
+        with suppress(Exception):
+            await create_notifications_bulk(
+                session,
+                participant_ids,
+                NotificationType.match,
+                {"match_id": str(match.id), "plan_id": str(plan.id)},
+            )
         await session.refresh(match)
     return match
 
 
-async def reject_application(
-    session: AsyncSession, host: User, application_id: UUID
-) -> None:
+async def reject_application(session: AsyncSession, host: User, application_id: UUID) -> None:
     application = await _load_application(session, application_id)
     plan = await _load_plan(session, application.plan_id)
 
@@ -274,9 +269,7 @@ async def get_match(session: AsyncSession, match_id: UUID) -> Match:
     return match
 
 
-async def complete_match(
-    session: AsyncSession, user: User, match_id: UUID
-) -> Match:
+async def complete_match(session: AsyncSession, user: User, match_id: UUID) -> Match:
     match = await get_match(session, match_id)
     # Verificar participación
     result = await session.execute(
@@ -295,9 +288,7 @@ async def complete_match(
     return match
 
 
-async def cancel_match(
-    session: AsyncSession, user: User, match_id: UUID
-) -> Match:
+async def cancel_match(session: AsyncSession, user: User, match_id: UUID) -> Match:
     match = await get_match(session, match_id)
     result = await session.execute(
         select(MatchParticipant).where(
@@ -314,5 +305,3 @@ async def cancel_match(
     await session.commit()
     await session.refresh(match)
     return match
-
-
