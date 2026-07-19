@@ -29,6 +29,31 @@ async def create_notification(
     return notif
 
 
+async def create_notifications_bulk(
+    session: AsyncSession,
+    user_ids: list[UUID],
+    type_: NotificationType,
+    payload: dict[str, Any] | None = None,
+) -> None:
+    """Crea la misma notificación para múltiples usuarios en un solo insert bulk."""
+    if not user_ids:
+        return
+
+    now = datetime.now(UTC)
+    notifications = [
+        Notification(
+            id=uuid4(),
+            user_id=uid,
+            type=type_,
+            payload=payload,
+            created_at=now,
+        )
+        for uid in user_ids
+    ]
+    session.add_all(notifications)
+    await session.commit()
+
+
 async def list_notifications(
     session: AsyncSession,
     user_id: UUID,
