@@ -29,6 +29,33 @@ async def create_notification(
     return notif
 
 
+async def bulk_create_notifications(
+    session: AsyncSession,
+    user_ids: list[UUID],
+    type_: NotificationType,
+    payload: dict[str, Any] | None = None,
+) -> int:
+    """Creates multiple notifications efficiently in a single bulk operation."""
+    if not user_ids:
+        return 0
+
+    now = datetime.now(UTC)
+    notifications = [
+        Notification(
+            id=uuid4(),
+            user_id=uid,
+            type=type_,
+            payload=payload,
+            created_at=now,
+        )
+        for uid in user_ids
+    ]
+
+    session.add_all(notifications)
+    await session.commit()
+    return len(notifications)
+
+
 async def list_notifications(
     session: AsyncSession,
     user_id: UUID,
@@ -51,9 +78,7 @@ async def list_notifications(
     return list(result.scalars().all())
 
 
-async def mark_read(
-    session: AsyncSession, user_id: UUID, notification_id: UUID
-) -> None:
+async def mark_read(session: AsyncSession, user_id: UUID, notification_id: UUID) -> None:
     await session.execute(
         update(Notification)
         .where(
@@ -89,8 +114,6 @@ async def mark_all_read(session: AsyncSession, user_id: UUID) -> int:
 
 
 async def delete_all(session: AsyncSession, user_id: UUID) -> int:
-    result = await session.execute(
-        delete(Notification).where(Notification.user_id == user_id)
-    )
+    result = await session.execute(delete(Notification).where(Notification.user_id == user_id))
     await session.commit()
     return result.rowcount
