@@ -56,6 +56,7 @@ async def bulk_create_notifications(
     return len(notifications)
 
 
+
 async def list_notifications(
     session: AsyncSession,
     user_id: UUID,
