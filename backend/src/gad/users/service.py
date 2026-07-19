@@ -1,4 +1,5 @@
 # backend/src/gad/users/service.py
+import asyncio
 import io
 from datetime import UTC, datetime
 from uuid import UUID
@@ -146,6 +147,20 @@ async def set_user_status(session: AsyncSession, user_id: UUID, status) -> User:
     return user
 
 
+
+def _process_avatar_image_sync(raw: bytes) -> bytes:
+    try:
+        Image.open(io.BytesIO(raw)).verify()
+        img = Image.open(io.BytesIO(raw)).convert("RGB")
+    except Exception as e:
+        raise ValidationError("Imagen inválida o corrupta") from e
+
+    img.thumbnail((512, 512))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=85)
+    return buf.getvalue()
+
+
 async def upload_avatar(session: AsyncSession, user: User, file: UploadFile) -> str:
     """Redimensiona a 512x512, valida tipo/tamaño y guarda el avatar.
 
@@ -177,17 +192,8 @@ async def upload_avatar(session: AsyncSession, user: User, file: UploadFile) -> 
     if not _has_valid_magic(raw, content_type):
         raise ValidationError("El contenido no coincide con el tipo declarado")
 
-    # verify() valida integridad sin decodificar el body completo.
-    try:
-        Image.open(io.BytesIO(raw)).verify()
-        img = Image.open(io.BytesIO(raw)).convert("RGB")
-    except Exception as e:
-        raise ValidationError("Imagen inválida o corrupta") from e
-
-    img.thumbnail((512, 512))
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=85)
-    data = buf.getvalue()
+    # Procesar imagen sincrónicamente en un thread para no bloquear el event loop.
+    data = await asyncio.to_thread(_process_avatar_image_sync, raw)
 
     storage = get_storage()
     path = storage.avatar_path(str(user.id), "jpg")
