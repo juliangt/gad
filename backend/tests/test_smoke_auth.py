@@ -42,13 +42,25 @@ async def client(app):
 
 
 @pytest.mark.asyncio
-async def test_full_auth_lifecycle(client, db_session, redis_client):
+async def test_full_auth_lifecycle(client, db_session, redis_client, monkeypatch):
     # 1. Registro
     tokens = await register(
         db_session,
         RegisterIn(email="life@example.com", password="12345678", display_name="Life"),
     )
     headers = {"Authorization": f"Bearer {tokens.access_token}"}
+
+    issued_tokens = []
+    from gad.auth.password_reset import PasswordResetStore
+    original_issue = PasswordResetStore.issue
+
+    async def mock_issue(self, email):
+        token = await original_issue(self, email)
+        issued_tokens.append(token)
+        return token
+
+    monkeypatch.setattr(PasswordResetStore, "issue", mock_issue)
+
     async with client as c:
         # 2. /auth/me funciona
         assert (await c.get("/auth/me", headers=headers)).status_code == 200
@@ -73,8 +85,7 @@ async def test_full_auth_lifecycle(client, db_session, redis_client):
         await c.post(
             "/auth/password-reset/request", json={"email": "life@example.com"}
         )
-        token = await redis_client.get("pwreset:life@example.com")
-        token = token.decode() if isinstance(token, bytes) else token
+        token = issued_tokens[0]
         resp = await c.post(
             "/auth/password-reset/confirm",
             json={"token": token, "new_password": "finalpass123"},

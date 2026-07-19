@@ -8,6 +8,18 @@ from gad.middleware.metrics import metrics_router, record_request
 @pytest.fixture
 async def client():
     app = FastAPI()
+
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+
+    from gad.exceptions import GADError
+
+    @app.exception_handler(GADError)
+    async def h(request: Request, exc: GADError) -> JSONResponse:
+        return JSONResponse(
+            status_code=exc.status_code, content={"detail": exc.detail, "code": exc.code}
+        )
+
     app.include_router(metrics_router)
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
@@ -15,7 +27,8 @@ async def client():
 @pytest.mark.asyncio
 async def test_metrics_endpoint_requires_admin(client):
     # Sin inyectar el usuario admin, el endpoint debe fallar
-    # FastAPI devolverá 422 si falta el header o el middleware de auth lo atrapará (si estuviera montado).
+    # FastAPI devolverá 422 si falta el header o el middleware de auth lo
+    # atrapará (si estuviera montado).
     # Sin embargo, como estamos llamando a router sin middleware de auth ni exception handlers,
     # simplemente comprobaremos que devuelva algo distinto a 200.
     async with client as c:
