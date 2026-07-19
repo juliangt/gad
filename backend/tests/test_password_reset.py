@@ -39,20 +39,36 @@ async def client(app):
 
 
 @pytest.mark.asyncio
-async def test_password_reset_full_flow(client, db_session, redis_client):
+async def test_password_reset_full_flow(client, db_session, redis_client, monkeypatch):
     await register(
         db_session,
         RegisterIn(email="reset@example.com", password="12345678", display_name="R"),
     )
+
+    # Store issued tokens here so we can inject them into the confirm request
+    # since in tests we intercept Redis but Redis only stores jti now.
+    issued_tokens = []
+
+    from gad.auth.password_reset import PasswordResetStore
+    original_issue = PasswordResetStore.issue
+
+    async def mock_issue(self, email):
+        token = await original_issue(self, email)
+        issued_tokens.append(token)
+        return token
+
+    monkeypatch.setattr(PasswordResetStore, "issue", mock_issue)
+
     async with client as c:
         # 1. Solicitar reset
         resp = await c.post(
             "/auth/password-reset/request", json={"email": "reset@example.com"}
         )
         assert resp.status_code == 202
-        # 2. Extraer el token de Redis (en prod iría por email)
-        token = await redis_client.get("pwreset:reset@example.com")
-        token = token.decode() if isinstance(token, bytes) else token
+
+        # We need the full JWT token, which normally goes to the email, to confirm.
+        token = issued_tokens[0]
+
         # 3. Confirmar con nueva password
         resp2 = await c.post(
             "/auth/password-reset/confirm",
