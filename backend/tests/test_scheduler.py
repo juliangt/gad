@@ -1,9 +1,10 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from gad.jobs import scheduler
-from gad.jobs.scheduler import setup_scheduler, start_scheduler, shutdown_scheduler
+from gad.jobs.scheduler import setup_scheduler, shutdown_scheduler, start_scheduler
 
 
 @pytest.fixture(autouse=True)

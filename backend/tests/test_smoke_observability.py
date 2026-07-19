@@ -13,6 +13,12 @@ async def client():
     app.add_middleware(RequestLoggingMiddleware)
     app.include_router(metrics_router)
 
+    from gad.admin.dependencies import require_admin
+    from gad.models.user import User
+    app.dependency_overrides[require_admin] = lambda: User(
+        id="00000000-0000-0000-0000-000000000000", is_admin=True
+    )
+
     @app.get("/ping")
     async def ping():
         return {"ok": True}
