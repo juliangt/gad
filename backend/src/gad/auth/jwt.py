@@ -29,6 +29,26 @@ def create_access_token(user_id: str, expires_in_minutes: int | None = None) -> 
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
+def create_pwreset_token(email: str, expires_in_minutes: int | None = None) -> tuple[str, str]:
+    settings = get_settings()
+    now = datetime.now(UTC)
+    minutes = (
+        expires_in_minutes
+        if expires_in_minutes is not None
+        else settings.password_reset_token_expire_minutes
+    )
+    jti = secrets.token_hex(16)
+    payload = {
+        "sub": email,
+        "type": "pwreset",
+        "iat": now.timestamp(),
+        "exp": int((now + timedelta(minutes=minutes)).timestamp()),
+        "jti": jti,
+    }
+    token = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    return token, jti
+
+
 def create_refresh_token(user_id: str, expires_in_days: int | None = None) -> str:
     settings = get_settings()
     now = datetime.now(UTC)

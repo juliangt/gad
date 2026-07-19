@@ -1,12 +1,13 @@
 """Tokens de reset de contraseña de un solo uso, en Redis.
 
-El token se guarda como pwreset:<email> = <token> con TTL corto.
-Al confirmar, se valida y se borra (one-shot).
+El token se guarda como pwreset:<email> = <jti> con TTL corto.
+Al confirmar, se valida que el jti coincida, garantizando one-shot.
 """
 import secrets
 
 from redis.asyncio import Redis
 
+from gad.auth.jwt import create_pwreset_token, decode_token
 from gad.config import settings
 
 _PREFIX = "pwreset:"
@@ -17,32 +18,62 @@ class PasswordResetStore:
         self._redis = redis
 
     async def issue(self, email: str) -> str:
-        token = secrets.token_urlsafe(32)
+        token, jti = create_pwreset_token(email)
         ttl = settings.password_reset_token_expire_minutes * 60
-        await self._redis.set(_PREFIX + email, token, ex=ttl)
+        await self._redis.set(_PREFIX + email, jti, ex=ttl)
         return token
 
     async def validate_and_consume(self, email: str, token: str) -> bool:
+        try:
+            payload = decode_token(token)
+        except Exception:
+            return False
+
+        if payload.get("type") != "pwreset":
+            return False
+        if payload.get("sub") != email:
+            return False
+
+        jti = payload.get("jti")
+        if not jti:
+            return False
+
         stored = await self._redis.get(_PREFIX + email)
         if stored is None:
             return False
         stored = stored.decode() if isinstance(stored, bytes) else stored
-        if not secrets.compare_digest(stored, token):
+
+        if not secrets.compare_digest(stored, jti):
             return False
+
         await self._redis.delete(_PREFIX + email)
         return True
 
     async def find_email_for_token(self, token: str) -> str | None:
-        """Escanea pwreset:* buscando el token. En prod el token debería ser
-        autocontenido (JWT firmado) para evitar este escaneo; acá es aceptable
-        porque el TTL es corto y el volumen bajo."""
-        async for key in self._redis.scan_iter(match=_PREFIX + "*", count=100):
-            stored = await self._redis.get(key)
-            stored = stored.decode() if isinstance(stored, bytes) else stored
-            key_str = key.decode() if isinstance(key, bytes) else key
-            if stored and secrets.compare_digest(stored, token):
-                return key_str.removeprefix(_PREFIX)
-        return None
+        """Decode the JWT and check redis to see if token is valid."""
+        try:
+            payload = decode_token(token)
+        except Exception:
+            return None
+
+        if payload.get("type") != "pwreset":
+            return None
+
+        email = payload.get("sub")
+        jti = payload.get("jti")
+
+        if not email or not jti:
+            return None
+
+        stored = await self._redis.get(_PREFIX + email)
+        if stored is None:
+            return None
+        stored = stored.decode() if isinstance(stored, bytes) else stored
+
+        if not secrets.compare_digest(stored, jti):
+            return None
+
+        return str(email)
 
 
 # Singleton; los tests pueden sobreescribir `_store`.

@@ -31,15 +31,16 @@ async def _verify_can_review(
         raise ValidationError("El match no está completado")
 
     # Ambos son participantes
-    for uid in (reviewer.id, reviewee_id):
-        is_p = await session.execute(
-            select(MatchParticipant).where(
-                MatchParticipant.match_id == match_id,
-                MatchParticipant.user_id == uid,
-            )
+    participants_result = await session.execute(
+        select(MatchParticipant).where(
+            MatchParticipant.match_id == match_id,
+            MatchParticipant.user_id.in_([reviewer.id, reviewee_id]),
         )
-        if is_p.scalar_one_or_none() is None:
-            raise ValidationError("Ambos deben ser participantes del match")
+    )
+    participants = list(participants_result.scalars().all())
+    # Asumimos que reviewer.id y reviewee_id son distintos (validado en create_review)
+    if len(participants) < 2:
+        raise ValidationError("Ambos deben ser participantes del match")
 
     # Dentro de ventana de 7 días desde ended_at
     if match.ended_at is None:
@@ -61,9 +62,7 @@ async def _verify_can_review(
     return match
 
 
-async def create_review(
-    session: AsyncSession, reviewer: User, data: ReviewIn
-) -> Review:
+async def create_review(session: AsyncSession, reviewer: User, data: ReviewIn) -> Review:
     if reviewer.id == data.reviewee_id:
         raise ValidationError("No podés reseñarte a vos mismo")
 
@@ -87,9 +86,7 @@ async def create_review(
 
 
 async def recalc_reputation(session: AsyncSession, user_id: UUID) -> float:
-    result = await session.execute(
-        select(Review).where(Review.reviewee_id == user_id)
-    )
+    result = await session.execute(select(Review).where(Review.reviewee_id == user_id))
     reviews = list(result.scalars().all())
     score = calculate_reputation(reviews)
 

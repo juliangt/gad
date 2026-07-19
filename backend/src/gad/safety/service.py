@@ -13,7 +13,7 @@ from gad.models.enums import NotificationType, SafetyEventType
 from gad.models.match import MatchParticipant
 from gad.models.safety import SafetyEvent, SafetySession, TrustedContact
 from gad.models.user import User
-from gad.notifications.service import create_notifications_bulk
+from gad.notifications.service import bulk_create_notifications
 from gad.safety.schemas import TrustedContactIn
 from gad.safety.tokens import create_share_link_token, decode_share_link_token
 
@@ -185,7 +185,7 @@ async def trigger_sos(
 
     other_user_ids = [p.user_id for p in other_participants.scalars()]
     if other_user_ids:
-        await create_notifications_bulk(
+        await bulk_create_notifications(
             session,
             other_user_ids,
             NotificationType.safety,
